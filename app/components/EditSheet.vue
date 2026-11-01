@@ -15,6 +15,7 @@ const notes = ref(s.notes)
 const icon = ref(s.icon)
 const color = ref(s.color)
 const pickingIcon = ref(false)
+const myShare = ref<number | null>(s.myShare)
 const remindDays = ref(s.remindDaysBefore == null ? '' : String(s.remindDaysBefore))
 const error = ref('')
 
@@ -32,6 +33,7 @@ async function save() {
       url: url.value.trim() || null,
       notes: notes.value.trim(),
       remindDaysBefore: days != null && Number.isInteger(days) && days >= 0 ? days : null,
+      myShare: myShare.value,
     })
     changed()
     emit('done')
@@ -58,6 +60,8 @@ async function save() {
         <button type="button" class="chip" :class="{ chosen: kind === 'subscription' }" @click="kind = 'subscription'">Subscription</button>
         <button type="button" class="chip" :class="{ chosen: kind === 'bill' }" @click="kind = 'bill'">Bill</button>
       </div>
+      <span class="muted small">Shared with others? Your part</span>
+      <ShareChips v-model="myShare" />
       <input v-model="url" class="field" type="url" inputmode="url" placeholder="Website or cancel link" aria-label="Link" />
       <input
         v-model="remindDays"

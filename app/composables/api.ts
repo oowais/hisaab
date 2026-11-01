@@ -40,6 +40,8 @@ export type SubscriptionFields = {
   url: string | null
   notes: string
   remindDaysBefore: number | null
+  /** Shared: the percent that's yours (1–99); null = all of it. */
+  myShare: number | null
 }
 
 export type Subscription = SubscriptionFields & { id: string; kind: Kind; archivedAt: number | null }

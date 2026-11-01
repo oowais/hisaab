@@ -243,6 +243,9 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
           <span class="chip status" :class="sub.status">{{ STATUS[sub.status] }}</span>
           <span v-if="sub.current?.planLabel" class="muted">{{ sub.current.planLabel }}</span>
           <b class="price">{{ price }}</b>
+          <span v-if="sub.myShare != null && sub.current" class="muted small">
+            Shared · yours {{ sub.myShare }}%, {{ money(Math.round((sub.current.amountMinor * sub.myShare) / 100), sub.current.currency) }}
+          </span>
           <span v-if="sub.nextCharge" class="muted small">
             Next {{ relativeDay(sub.nextCharge.dueDate, today) }} ·
             {{ money(sub.nextCharge.amountMinor, sub.nextCharge.currency) }}
@@ -324,7 +327,7 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 
       <template v-if="sub.history.length">
         <h2 class="section-title">
-          Total spent: {{ money(sub.totalSpent, main) }}
+          {{ sub.myShare != null ? 'Your part spent' : 'Total spent' }}: {{ money(sub.totalSpent, main) }}
           <span v-if="sub.excludedCurrencies.length" class="muted">(without {{ sub.excludedCurrencies.join(', ') }})</span>
         </h2>
         <ul class="pane rows list">

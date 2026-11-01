@@ -132,7 +132,7 @@ impl Store {
         let yearly_in_main = match current.as_ref().filter(|p| paying && p.charges()) {
             Some(p) => {
                 let yearly = (p.terms.amount_minor as f64 * per_year(p.terms.every_n, p.terms.unit)).round() as i64;
-                self.amount_in(yearly, &p.terms.currency, main)?
+                self.amount_in(yearly, &p.terms.currency, main)?.map(|y| s.subscription.part(y))
             }
             None => None,
         };
@@ -198,7 +198,7 @@ impl Store {
             for c in occurrences(&s.periods, &s.overrides, from, today, today).into_iter().rev() {
                 let in_main = self.charge_in(&c, &main)?;
                 match in_main {
-                    Some(v) => total_spent += v,
+                    Some(v) => total_spent += s.subscription.part(v),
                     None => excluded.push(c.currency.clone()),
                 }
                 let override_id = override_of(&s.overrides, &c);
@@ -260,10 +260,13 @@ impl Store {
         let first = day.with_day(1).unwrap_or(day);
         let last = add_months_clamped(first, 1).map(prev_day).unwrap_or(first);
         let (mut charges, mut total, mut excluded) = (Vec::new(), 0, Vec::new());
+        let subs: std::collections::HashMap<String, Subscription> =
+            self.subscriptions()?.into_iter().map(|s| (s.subscription.id.clone(), s.subscription)).collect();
         for c in self.charges(first, last, today)? {
             let in_main = self.charge_in(&c, &main)?;
             match in_main {
-                Some(v) => total += v,
+                // Shared payments: your part.
+                Some(v) => total += subs.get(&c.subscription_id).map_or(v, |s| s.part(v)),
                 None => excluded.push(c.currency.clone()),
             }
             charges.push(UpcomingCharge { charge: c, in_main });

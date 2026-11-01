@@ -85,6 +85,8 @@ pub struct SubscriptionFields {
     pub notes: String,
     /// None = the global default.
     pub remind_days_before: Option<u32>,
+    /// Shared: the percent you pay (1–99). None = all of it.
+    pub my_share: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -103,6 +105,18 @@ pub struct Subscription {
     pub remind_days_before: Option<u32>,
     /// UTC ms.
     pub archived_at: Option<i64>,
+    /// Shared: the percent you pay. None = all of it.
+    pub my_share: Option<u32>,
+}
+
+impl Subscription {
+    /// Your part of `amount` (shared payments): what totals count.
+    pub fn part(&self, amount: i64) -> i64 {
+        match self.my_share {
+            Some(p) => (amount * i64::from(p) + 50).div_euclid(100),
+            None => amount,
+        }
+    }
 }
 
 /// The price side of a period: what is charged, how often.

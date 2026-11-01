@@ -67,7 +67,7 @@ fn text_err(e: Error) -> rusqlite::Error {
 }
 
 const SUB_COLS: &str = "id, kind, name, template_key, icon, color, category_id, payment_method_id, url, notes, \
-    remind_days_before, archived_at";
+    remind_days_before, archived_at, my_share";
 
 fn sub_row(r: &Row) -> rusqlite::Result<Subscription> {
     Ok(Subscription {
@@ -83,6 +83,7 @@ fn sub_row(r: &Row) -> rusqlite::Result<Subscription> {
         notes: r.get(9)?,
         remind_days_before: r.get(10)?,
         archived_at: r.get(11)?,
+        my_share: r.get(12)?,
     })
 }
 
@@ -240,6 +241,9 @@ fn save_periods(c: &Connection, before: &[Period], after: &[Period], now: i64) -
 fn validate_fields(f: &SubscriptionFields) -> Result<()> {
     if f.name.trim().is_empty() {
         return Err(Error::Invalid("name is empty".into()));
+    }
+    if f.my_share.is_some_and(|p| !(1..=99).contains(&p)) {
+        return Err(Error::Invalid("your share must be 1–99%".into()));
     }
     Ok(())
 }
@@ -459,7 +463,7 @@ impl Store {
         });
         self.write(|c, now| {
             c.execute(
-                &format!("INSERT INTO subscription ({SUB_COLS}, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL, ?12, ?12)"),
+                &format!("INSERT INTO subscription ({SUB_COLS}, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL, ?13, ?12, ?12)"),
                 params![
                     id,
                     f.kind.unwrap_or(Kind::Subscription).as_str(),
@@ -473,6 +477,7 @@ impl Store {
                     f.notes,
                     f.remind_days_before,
                     now,
+                    f.my_share,
                 ],
             )?;
             save_periods(c, &[], &periods, now)
@@ -485,7 +490,8 @@ impl Store {
         self.write(|c, now| {
             let n = c.execute(
                 "UPDATE subscription SET kind = ?2, name = ?3, template_key = ?4, icon = ?5, color = ?6, category_id = ?7,
-                   payment_method_id = ?8, url = ?9, notes = ?10, remind_days_before = ?11, updated_at = ?12
+                   payment_method_id = ?8, url = ?9, notes = ?10, remind_days_before = ?11, updated_at = ?12,
+                   my_share = ?13
                  WHERE id = ?1 AND deleted_at IS NULL",
                 params![
                     id,
@@ -500,6 +506,7 @@ impl Store {
                     f.notes,
                     f.remind_days_before,
                     now,
+                    f.my_share,
                 ],
             )?;
             if n == 0 {

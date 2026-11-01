@@ -9,6 +9,10 @@ const emit = defineEmits<{ open: []; move: []; menu: [e: MouseEvent] }>()
 
 const when = computed(() => relativeDay(props.charge.dueDate, props.today))
 const original = computed(() => formatMoney(props.charge.amountMinor, props.charge.currency))
+// Shared: your part of it (what the totals count).
+const mine = computed(() =>
+  props.sub.myShare == null ? '' : formatMoney(Math.round((props.charge.amountMinor * props.sub.myShare) / 100), props.charge.currency),
+)
 const converted = computed(() =>
   props.charge.currency !== props.main && props.charge.inMain != null ? formatMoney(props.charge.inMain, props.main) : null,
 )
@@ -97,7 +101,8 @@ function open() {
         </span>
         <span class="amount">
           <span>{{ charge.estimated ? '~' : '' }}{{ original }}</span>
-          <span v-if="converted" class="muted small">{{ converted }}</span>
+          <span v-if="mine" class="muted small">yours {{ mine }}</span>
+          <span v-else-if="converted" class="muted small">{{ converted }}</span>
         </span>
       </button>
     </div>

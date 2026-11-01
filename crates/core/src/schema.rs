@@ -186,5 +186,7 @@ pub fn migrations() -> Migrations<'static> {
         CREATE INDEX conflicts_open ON conflicts(resolution, at);
         ",
         ),
+        // A shared payment: the percent that's yours (NULL = all of it).
+        M::up("ALTER TABLE subscription ADD COLUMN my_share INTEGER;"),
     ])
 }

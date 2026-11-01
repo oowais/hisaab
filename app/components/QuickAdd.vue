@@ -74,6 +74,9 @@ const INTERVALS: { n: number; unit: Unit }[] = [
 const custom = ref(false)
 const startLabel = computed(() => (start.value === today ? 'today' : relativeDay(start.value)))
 
+// Shared: the percent that's yours (null = all).
+const myShare = ref<number | null>(null)
+
 // Monthly budget (Settings): say so when this one takes you over it.
 const { data: overview } = useOverview()
 const addsMonthly = ref<number | null>(null)
@@ -90,7 +93,8 @@ watch([amountText, currency, everyN, unit], () => {
 const overBudget = computed(() => {
   const o = overview.value
   if (!o?.monthlyBudget || addsMonthly.value == null) return ''
-  const after = Math.round(o.yearlyTotal / 12) + addsMonthly.value
+  const mine = myShare.value == null ? addsMonthly.value : Math.round((addsMonthly.value * myShare.value) / 100)
+  const after = Math.round(o.yearlyTotal / 12) + mine
   if (after <= o.monthlyBudget) return ''
   const money = (n: number) => formatMoney(n, o.mainCurrency, { compact: true })
   return `This takes you to ${money(after)} a month, ${money(after - o.monthlyBudget)} over your budget.`
@@ -165,6 +169,7 @@ async function save() {
         url: url.value.trim() || null,
         notes: notes.value.trim(),
         remindDaysBefore: days != null && Number.isInteger(days) && days >= 0 ? days : null,
+        myShare: myShare.value,
       },
       terms: {
         amountMinor: amount.value,
@@ -288,6 +293,9 @@ async function save() {
             <button type="button" class="chip" :class="{ chosen: kind === 'bill' }" @click="kind = 'bill'">Bill</button>
             <button type="button" class="chip" :class="{ chosen: estimated }" @click="estimated = !estimated">Amount varies</button>
           </div>
+
+          <label class="label muted small">Shared with others? Your part</label>
+          <ShareChips v-model="myShare" />
 
           <label class="label muted small">Category</label>
           <div class="chips">

@@ -140,3 +140,28 @@ fn widget_shows_the_month_and_next_charges() {
     assert_eq!(w.charges.len(), 1);
     assert_eq!((w.charges[0].name.as_str(), w.charges[0].due_date), ("Netflix", d("2026-03-20")));
 }
+
+#[test]
+fn shared_payments_count_your_part() {
+    let mut s = store();
+    let id = s
+        .add_subscription(&NewSubscription {
+            fields: SubscriptionFields { name: "Family plan".into(), my_share: Some(25), ..Default::default() },
+            terms: monthly(2000),
+            start_date: d("2026-01-10"),
+            anchor_date: None,
+            trial_end: None,
+        })
+        .unwrap()
+        .subscription
+        .id;
+    let today = d("2026-03-20");
+    assert_eq!(s.overview(today).unwrap().yearly_total, 500 * 12);
+    let detail = s.detail(&id, today).unwrap();
+    assert_eq!(detail.total_spent, 3 * 500);
+    assert_eq!(detail.history[0].charge.amount_minor, 2000, "the charge itself stays whole");
+    assert_eq!(s.month_charges(today, today).unwrap().total, 500);
+    assert_eq!(s.stats(today, 0).unwrap().months[0].total, 500);
+    let bad = SubscriptionFields { name: "x".into(), my_share: Some(100), ..Default::default() };
+    assert!(s.update_subscription(&id, &bad).is_err());
+}

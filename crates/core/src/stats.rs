@@ -2,6 +2,7 @@
 //! so past prices stay right), what the running payments cost a year split
 //! by category, payment method and currency, and what pausing and
 //! cancelling saved. All in the main currency; charges at their day's rate.
+//! Shared payments count your part.
 
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
@@ -133,6 +134,8 @@ impl Store {
                         excluded.push(c.currency.clone());
                         continue;
                     };
+                    // Shared payments: your part.
+                    let v = s.subscription.part(v);
                     if let Some(ms) = month_list.iter_mut().find(|ms| ms.month == month_key(c.due_date)) {
                         ms.total += v;
                         add(&mut ms.by_category, s.subscription.category_id.clone(), v);
@@ -171,7 +174,7 @@ impl Store {
                 let until = next_start.map_or(today, |d| d.min(today));
                 for c in would_have(p, until, today) {
                     match self.charge_in(&c, &main)? {
-                        Some(v) => saved += v,
+                        Some(v) => saved += s.subscription.part(v),
                         None => excluded.push(c.currency.clone()),
                     }
                 }
