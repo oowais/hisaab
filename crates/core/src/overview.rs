@@ -7,7 +7,7 @@
 use chrono::NaiveDate;
 use serde::Serialize;
 
-use crate::dates::add_months_clamped;
+use crate::dates::{add_months_clamped, prev_day};
 use crate::invariants::status_on;
 use crate::model::*;
 use crate::occurrence::{next_charge, occurrences};
@@ -216,7 +216,37 @@ impl Store {
     }
 }
 
+/// One calendar month's charges (the Calendar screen).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonthCharges {
+    /// By date.
+    pub charges: Vec<UpcomingCharge>,
+    /// In main; charges with no rate are left out.
+    pub total: i64,
+    pub excluded_currencies: Vec<String>,
+}
+
 impl Store {
+    /// Charges of the month `day` is in (archived payments left out).
+    pub fn month_charges(&self, day: NaiveDate, today: NaiveDate) -> Result<MonthCharges> {
+        let main = self.main_currency()?;
+        let first = day.with_day(1).unwrap_or(day);
+        let last = add_months_clamped(first, 1).map(prev_day).unwrap_or(first);
+        let (mut charges, mut total, mut excluded) = (Vec::new(), 0, Vec::new());
+        for c in self.charges(first, last, today)? {
+            let in_main = self.charge_in(&c, &main)?;
+            match in_main {
+                Some(v) => total += v,
+                None => excluded.push(c.currency.clone()),
+            }
+            charges.push(UpcomingCharge { charge: c, in_main });
+        }
+        excluded.sort();
+        excluded.dedup();
+        Ok(MonthCharges { charges, total, excluded_currencies: excluded })
+    }
+
     /// Archived subscriptions, by name (the Archive screen).
     pub fn archived(&self, today: NaiveDate) -> Result<Vec<SubscriptionView>> {
         let main = self.main_currency()?;

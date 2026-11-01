@@ -73,6 +73,12 @@ fn overview(db: State<Db>, today: NaiveDate) -> Res<Overview> {
     with(&db, |s| s.overview(today))
 }
 
+/// Charges of the month `day` is in (Calendar).
+#[tauri::command]
+fn month_charges(db: State<Db>, day: NaiveDate, today: NaiveDate) -> Res<MonthCharges> {
+    with(&db, |s| s.month_charges(day, today))
+}
+
 /// `months`: how far back the monthly history goes (0 = all).
 #[tauri::command]
 fn stats(db: State<Db>, today: NaiveDate, months: u32) -> Res<Stats> {
@@ -483,6 +489,7 @@ pub fn run() {
             timeline,
             archived,
             stats,
+            month_charges,
             detail,
             defaults,
             categories,

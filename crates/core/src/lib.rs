@@ -21,7 +21,7 @@ mod fx;
 
 pub use conflicts::Conflict;
 pub use model::*;
-pub use overview::{per_year, Detail, HistoryCharge, Overview, SubscriptionView, TimelineLane, UpcomingCharge};
+pub use overview::{per_year, Detail, MonthCharges, HistoryCharge, Overview, SubscriptionView, TimelineLane, UpcomingCharge};
 pub use reminders::{snooze_picks, Fired, Reminder, SnoozePick};
 pub use stats::{MonthSpend, Slice, Stats};
 pub use store::{Settings, Store};

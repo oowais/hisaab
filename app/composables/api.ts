@@ -149,6 +149,7 @@ export type Conflict = {
 }
 export type BackupStatus = { folder: string | null; lastAt: number | null; lastError: string | null }
 
+export type MonthCharges = { charges: UpcomingCharge[]; total: number; excludedCurrencies: string[] }
 export type Slice = { key: string | null; amount: number }
 export type MonthSpend = { month: string; total: number; byCategory: Slice[]; forecast: boolean }
 export type Stats = {
@@ -187,6 +188,7 @@ export const api = {
   timeline: (today: string) => invoke<TimelineLane[]>('timeline', { today }),
   archived: (today: string) => invoke<SubscriptionView[]>('archived', { today }),
   stats: (today: string, months: number) => invoke<Stats>('stats', { today, months }),
+  monthCharges: (day: string, today: string) => invoke<MonthCharges>('month_charges', { day, today }),
   detail: (id: string, today: string) => invoke<Detail>('detail', { id, today }),
   defaults: (id: string, today: string) => invoke<{ nextCharge: string | null; cycleEnd: string }>('defaults', { id, today }),
   categories: () => invoke<Category[]>('categories'),

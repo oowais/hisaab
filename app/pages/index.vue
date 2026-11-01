@@ -1,7 +1,19 @@
 <script setup lang="ts">
 // Upcoming (home): what's charged next, grouped by when, and what it all
 // costs per month / year / day in the main currency.
-import { Archive, CalendarClock, ChevronDown, ChevronUp, CirclePause, Ban, Pencil, Plus, Settings, TriangleAlert } from 'lucide-vue-next'
+import {
+  Archive,
+  CalendarClock,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  CirclePause,
+  Ban,
+  Pencil,
+  Plus,
+  Settings,
+  TriangleAlert,
+} from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
 
 const update = useUpdate()
@@ -92,6 +104,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
     <header class="topbar">
       <h1>Hisaab</h1>
       <SyncDot />
+      <NuxtLink to="/calendar" class="icon-btn cal" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
       <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
         <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
       </NuxtLink>

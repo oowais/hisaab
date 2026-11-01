@@ -101,3 +101,14 @@ fn timeline_has_all_periods_but_not_archived() {
     let archived: Vec<_> = s.archived(d("2026-01-01")).unwrap().into_iter().map(|v| v.subscription.name).collect();
     assert_eq!(archived, ["C"]);
 }
+
+#[test]
+fn a_months_charges_and_total() {
+    let mut s = store();
+    add(&mut s, "A", monthly(1000), "2026-01-10");
+    add(&mut s, "B", terms(1200, "EUR", 1, Unit::Week), "2026-03-02");
+    let m = s.month_charges(d("2026-03-17"), d("2026-03-17")).unwrap();
+    let days: Vec<_> = m.charges.iter().map(|c| c.charge.due_date.to_string()).collect();
+    assert_eq!(days, ["2026-03-02", "2026-03-09", "2026-03-10", "2026-03-16", "2026-03-23", "2026-03-30"]);
+    assert_eq!(m.total, 1000 + 5 * 1200);
+}
