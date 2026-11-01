@@ -3,7 +3,7 @@
 // periods and charges (one-time ones too), and what it has cost so far. Its own screen on a
 // phone (pages/sub/[id].vue), the right-hand pane beside Upcoming on a wide
 // window (`embedded`).
-import { Archive, ArchiveRestore, ExternalLink, MoreVertical, Pencil, Plus, Trash2, Undo2 } from 'lucide-vue-next'
+import { Archive, ArchiveRestore, ChevronDown, ChevronUp, ExternalLink, MoreVertical, Pencil, Plus, Trash2, Undo2 } from 'lucide-vue-next'
 import type { Action, Detail, ExtraCharge, HistoryCharge } from '~/composables/api'
 import DetailPane from '~/components/DetailPane.vue'
 import Screen from '~/components/Screen.vue'
@@ -220,6 +220,32 @@ async function undoOverride(c: HistoryCharge) {
     .then(changed)
     .catch((e) => toast.show({ message: friendlyError(e, 'undo it') }))
 }
+// ---- History by year, newest first: each year with what it cost (your
+// part); the newest open, older ones folded; a tap flips one.
+const flipped = ref(new Set<string>())
+const years = computed(() => {
+  const s = sub.value
+  if (!s) return []
+  const out: { year: string; rows: HistoryCharge[]; total: number; open: boolean }[] = []
+  for (const c of s.history) {
+    const year = c.dueDate.slice(0, 4)
+    let y = out.at(-1)
+    if (y?.year !== year) out.push((y = { year, rows: [], total: 0, open: false }))
+    y.rows.push(c)
+    if (c.inMain != null) y.total += s.myShare == null ? c.inMain : Math.round((c.inMain * s.myShare) / 100)
+  }
+  for (const [i, y] of out.entries()) y.open = (i === 0) !== flipped.value.has(y.year)
+  return out
+})
+function toggleYear(year: string) {
+  const next = new Set(flipped.value)
+  if (next.has(year)) next.delete(year)
+  else next.add(year)
+  flipped.value = next
+}
+const dayMonth = (d: string) => parseDay(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+const weekday = (d: string) => parseDay(d).toLocaleDateString(undefined, { weekday: 'short' })
+
 // ---- Coming: only what differs from the usual (one-time, moved, changed);
 // the next charge is in the card at the top (tap it to change it).
 const special = computed(() => sub.value?.coming.filter((c) => c.extraId || c.isOverride) ?? [])
@@ -363,26 +389,34 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
           {{ sub.myShare != null ? 'Your part spent' : 'Total spent' }}: {{ money(sub.totalSpent, main) }}
           <span v-if="sub.excludedCurrencies.length" class="muted">(without {{ sub.excludedCurrencies.join(', ') }})</span>
         </h2>
-        <ul class="pane rows list">
-          <li v-for="c in sub.history" :key="chargeKey(c)" class="item" @contextmenu="chargeMenu($event, c)">
-            <button class="charge" @click="openCharge(c)">
-              <span class="flex">
-                {{ shortDay(c.dueDate, today) }}
-                <span v-if="c.extraId" class="muted small">· {{ c.label ?? 'one-time' }}</span>
-                <span v-else-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
-              </span>
-              <span class="amount">
-                <span>{{ money(c.settledAmountMinor ?? c.amountMinor, c.settledCurrency ?? c.currency) }}</span>
-                <span v-if="(c.settledCurrency ?? c.currency) !== main && c.inMain != null" class="muted small">{{
-                  money(c.inMain, main)
-                }}</span>
-              </span>
-            </button>
-            <button v-if="c.overrideId" class="icon-btn" aria-label="Back to the usual charge" @click="undoOverride(c)">
-              <Undo2 :size="16" />
-            </button>
-          </li>
-        </ul>
+        <template v-for="y in years" :key="y.year">
+          <button class="year-head" :aria-expanded="y.open" @click="toggleYear(y.year)">
+            <b>{{ y.year }}</b>
+            <span class="muted small flex">{{ y.rows.length }} {{ y.rows.length === 1 ? 'charge' : 'charges' }}</span>
+            <span class="muted">{{ money(y.total, main) }}</span>
+            <component :is="y.open ? ChevronUp : ChevronDown" :size="18" class="muted" />
+          </button>
+          <ul v-if="y.open" class="pane rows list">
+            <li v-for="c in y.rows" :key="chargeKey(c)" class="item" @contextmenu="chargeMenu($event, c)">
+              <button class="charge" @click="openCharge(c)">
+                <span class="flex">
+                  {{ dayMonth(c.dueDate) }} <span class="muted small">{{ weekday(c.dueDate) }}</span>
+                  <span v-if="c.extraId" class="muted small">· {{ c.label ?? 'one-time' }}</span>
+                  <span v-else-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
+                </span>
+                <span class="amount">
+                  <span>{{ money(c.settledAmountMinor ?? c.amountMinor, c.settledCurrency ?? c.currency) }}</span>
+                  <span v-if="(c.settledCurrency ?? c.currency) !== main && c.inMain != null" class="muted small">{{
+                    money(c.inMain, main)
+                  }}</span>
+                </span>
+              </button>
+              <button v-if="c.overrideId" class="icon-btn" aria-label="Back to the usual charge" @click="undoOverride(c)">
+                <Undo2 :size="16" />
+              </button>
+            </li>
+          </ul>
+        </template>
       </template>
     </template>
 
@@ -443,6 +477,15 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 }
 .price {
   font-size: 1.25rem;
+}
+.year-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 14px 0 6px;
+  padding: 4px 4px;
+  text-align: left;
 }
 .next {
   padding: 0;
