@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // One charge, when reality differed from the rule. A past charge: what was
 // actually taken (same currency = the charge's amount; another currency =
-// what the bank took, e.g. €9.21 for $9.99), or that it wasn't charged. A
-// coming one: its amount (a variable bill's real figure), its date, or skip
-// it. "Back to the usual" drops the change.
+// what the bank took, e.g. €9.21 for $9.99), the day it was really taken
+// (a weekend pushed it to Monday), or that it wasn't charged. A coming one:
+// its amount (a variable bill's real figure), its date, or skip it. "Back
+// to the usual" drops the change.
 import { CalendarClock, Undo2, X } from 'lucide-vue-next'
 import type { Charge, NewOverride } from '~/composables/api'
 
@@ -93,8 +94,8 @@ async function backToUsual() {
         What your bank took for {{ formatMoney(c.amountMinor, c.currency) }}; totals use it.
       </p>
 
-      <button v-if="!past" type="button" class="pick" @click="pickingDay = true">
-        <span class="muted small">Charged on</span>
+      <button type="button" class="pick" @click="pickingDay = true">
+        <span class="muted small">{{ past ? 'Taken on' : 'Charged on' }}</span>
         <span>
           <CalendarClock :size="15" /> {{ shortDay(day) }} <span class="muted">· {{ relativeDay(day, today) }}</span>
         </span>
@@ -110,7 +111,13 @@ async function backToUsual() {
       </div>
     </form>
     <CurrencySheet v-if="pickingCurrency" v-model="currency" @close="pickingCurrency = false" />
-    <DateSheet v-if="pickingDay" v-model="day" title="Charged on" :min="today" @close="pickingDay = false" />
+    <DateSheet
+      v-if="pickingDay"
+      v-model="day"
+      :title="past ? 'Taken on' : 'Charged on'"
+      :min="past ? null : today"
+      @close="pickingDay = false"
+    />
   </div>
 </template>
 
