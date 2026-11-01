@@ -6,7 +6,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use crate::{schema, Error, Result};
 
 pub struct Store {
-    conn: Connection,
+    pub(crate) conn: Connection,
     clock: Box<dyn Fn() -> i64 + Send>,
 }
 
@@ -17,7 +17,6 @@ fn system_now() -> i64 {
         .unwrap_or(0)
 }
 
-#[allow(dead_code)] // used by the tables of milestone 2
 pub(crate) fn new_id() -> String {
     uuid::Uuid::now_v7().to_string()
 }

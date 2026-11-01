@@ -59,7 +59,7 @@ period          -- contiguous stretch with one set of terms
 
 charge_override -- only when reality differs from the rule
   id, period_id, due_date,
-  kind,                     -- 'skipped' | 'moved' | 'amount_changed'
+  kind,                     -- 'skipped' | 'moved' | 'amount_changed' | 'settled' (only records what the bank took)
   new_due_date,             -- for 'moved'
   actual_amount_minor, actual_currency,
   settled_amount_minor, settled_currency   -- what the bank actually took
@@ -203,8 +203,8 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 | #   | Milestone                      | Status                                                                                        |
 | --- | ------------------------------ | --------------------------------------------------------------------------------------------- |
 | 1   | Scaffold + CI + in-app updates | Done (Nov 1, 2026): released 0.1.1, Android update verified; Windows and Linux still to check |
-| 2   | Domain core                    | Next                                                                                          |
-| 3   | MVP UI                         | —                                                                                             |
+| 2   | Domain core                    | Done (Nov 1, 2026): `crates/core`, 34 tests                                                   |
+| 3   | MVP UI                         | Next                                                                                          |
 | 4   | Timeline                       | —                                                                                             |
 | 5   | Notifications                  | —                                                                                             |
 | 6   | Sync + backup                  | —                                                                                             |
@@ -221,7 +221,24 @@ Milestone 1 checklist:
 - [x] Set repo secrets, first push, install the APK from the release, confirm an in-app update on Android (0.1.0 → 0.1.1, Nov 1, 2026)
 - [ ] Confirm the in-app update on Windows and `scripts/install-arch.sh` on Linux
 
-**Next:** milestone 2 — schema for category / payment_method / subscription / period / charge_override / fx_rate, repositories, occurrence engine, invariants, currency conversion, with the required tests.
+Milestone 2 checklist:
+
+- [x] Migration 2: category, payment_method, subscription, period, charge_override, fx_rate (no foreign keys: sync may deliver rows out of order)
+- [x] Occurrence engine (`occurrence.rs`): anchor-based steps with month-end clamping, overrides, paid/upcoming
+- [x] Invariants and shown status (`invariants.rs`)
+- [x] Repositories and actions (`subscriptions.rs`): add (with trial), change terms, pause/resume, cancel, restart, convert trial, overrides (re-homed on splits), archive, delete/restore, categories, payment methods
+- [x] Currency (`currency.rs`, `fx.rs`): ISO 4217 codes and minor units, conversion via EUR, rate cache with previous-business-day lookup, valuation rules, staleness
+- [x] Tests: everything in §4's list, plus actions and currency
+
+Decisions made in milestone 2:
+
+- Dates are calendar days (`YYYY-MM-DD`), not instants.
+- Free trials (amount 0) produce no charges; a trial with an end date is followed by the paid period from the next day, so it converts by itself unless cancelled.
+- A paused period keeps its terms (resume copies them); it produces no charges.
+- An open-ended pause drops later scheduled changes (e.g. a future price rise); a pause with a resume date keeps them.
+- Shown status: the period covering today; else the next scheduled one; else Ended.
+
+**Next:** milestone 3 — Tauri commands over the core, FX fetch (Frankfurter via `ureq`) + cache, Upcoming, Quick add + templates, Detail with status actions, Settings basics (main currency, default reminder days).
 
 ### Backlog (Befikr features not copied yet)
 

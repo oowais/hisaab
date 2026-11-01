@@ -1516,6 +1516,7 @@ dependencies = [
 name = "hisaab-core"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rusqlite",
  "rusqlite_migration",
  "serde",

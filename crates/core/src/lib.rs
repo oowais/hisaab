@@ -4,10 +4,19 @@
 //! change events later. No Tauri or platform code here: the app calls it
 //! from Tauri commands, Android calls it via JNI when no webview runs.
 
+pub mod currency;
+pub mod dates;
+pub mod invariants;
+mod model;
+pub mod occurrence;
 mod schema;
 mod store;
+mod subscriptions;
+mod fx;
 
+pub use model::*;
 pub use store::Store;
+pub use subscriptions::{NewOverride, NewSubscription};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
