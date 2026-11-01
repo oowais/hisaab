@@ -1,27 +1,23 @@
 <script setup lang="ts">
 // Main screens. Phone: a bar at the bottom; wide windows: a rail on the left.
-// Hidden on pages that aren't tabs. Settings shows a dot when an update is ready.
-import { CalendarDays, ChartColumn, ChartGantt, House, Settings } from 'lucide-vue-next'
+// Hidden on pages that aren't tabs. Settings: the gear at the top right
+// (SettingsLink).
+import { CalendarDays, ChartColumn, ChartGantt, House } from 'lucide-vue-next'
 
 const TABS = [
   { to: '/', label: 'Home', icon: House },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/timeline', label: 'Timeline', icon: ChartGantt },
   { to: '/stats', label: 'Stats', icon: ChartColumn },
-  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 const route = useRoute()
-const update = useUpdate()
 const shown = computed(() => TABS.some((t) => t.to === route.path.replace(/(.)\/$/, '$1')))
 </script>
 
 <template>
   <nav v-if="shown" class="tabs popover" aria-label="Main">
     <NuxtLink v-for="t in TABS" :key="t.to" :to="t.to" class="tab" :class="{ chosen: route.path === t.to }">
-      <span class="icon">
-        <component :is="t.icon" :size="22" />
-        <span v-if="t.to === '/settings' && update.available.value" class="update-dot" aria-label="Update available" />
-      </span>
+      <component :is="t.icon" :size="22" />
       <span>{{ t.label }}</span>
     </NuxtLink>
   </nav>
@@ -44,8 +40,8 @@ const shown = computed(() => TABS.some((t) => t.to === route.path.replace(/(.)\/
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 64px;
-  padding: 6px 8px;
+  min-width: 76px;
+  padding: 6px 10px;
   border-radius: 999px;
   color: var(--muted);
   text-decoration: none;
@@ -57,20 +53,6 @@ const shown = computed(() => TABS.some((t) => t.to === route.path.replace(/(.)\/
   box-shadow:
     inset 0 1px 0 var(--glass-control-rim),
     inset 0 0 0 1px var(--line);
-}
-.icon {
-  position: relative;
-  display: grid;
-}
-.update-dot {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px var(--bg);
 }
 @media (min-width: 900px) {
   .tabs {

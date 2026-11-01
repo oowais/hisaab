@@ -89,6 +89,7 @@ const open = (id: string) => router.push(`/sub/${id}`)
     <template #actions>
       <button class="icon-btn" aria-label="Previous month" @click="shift(-1)"><ChevronLeft :size="22" /></button>
       <button class="icon-btn" aria-label="Next month" @click="shift(1)"><ChevronRight :size="22" /></button>
+      <SettingsLink />
     </template>
     <p v-if="error" class="error">{{ error }}</p>
 

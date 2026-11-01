@@ -233,6 +233,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
         </button>
         <button v-if="!empty" class="icon-btn" aria-label="Sort" title="Sort" @click="sortMenu"><ArrowDownUp :size="22" /></button>
         <NuxtLink v-if="!empty" to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
+        <SettingsLink />
       </header>
       <SyncStaleHint />
 

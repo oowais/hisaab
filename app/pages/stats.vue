@@ -109,6 +109,7 @@ const splits = computed<Split[]>(() => {
   <main class="page">
     <header class="topbar">
       <h1>Stats</h1>
+      <SettingsLink />
     </header>
     <p v-if="error" class="error">{{ error }}</p>
 

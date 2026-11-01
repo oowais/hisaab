@@ -2,7 +2,7 @@
 // Shared page frame: back button, title and optional #actions pinned at the
 // top, the page's content scrolling below. Built like the home screen
 // (index.vue): fixed between the status and gesture bars, so only the body
-// ever scrolls. `tab`: a main screen (Calendar, Settings), no back button and
+// ever scrolls. `tab`: a main screen (Calendar), no back button and
 // room for the tab bar.
 import { ArrowLeft } from 'lucide-vue-next'
 defineProps<{ title: string; tab?: boolean }>()

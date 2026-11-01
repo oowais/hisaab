@@ -152,7 +152,7 @@ async function setDesktop(f: () => Promise<void>) {
 </script>
 
 <template>
-  <Screen title="Settings" tab>
+  <Screen title="Settings">
     <p v-if="error" class="error">{{ error }}</p>
     <template v-if="settings">
       <h2 class="section-title">Money</h2>

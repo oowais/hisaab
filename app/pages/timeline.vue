@@ -57,6 +57,7 @@ const marker = (m: Marker) => toast.show({ message: `${shortDay(m.date)}: ${m.te
   <main class="page">
     <header class="topbar">
       <h1>Timeline</h1>
+      <SettingsLink />
     </header>
     <p v-if="error" class="error">{{ error }}</p>
 
