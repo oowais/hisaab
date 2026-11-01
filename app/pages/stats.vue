@@ -272,7 +272,7 @@ const splits = computed<Split[]>(() => {
   overflow-x: auto;
   scrollbar-width: none;
 }
-svg {
+.scroller svg {
   display: block;
   margin-left: auto;
 }
