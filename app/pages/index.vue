@@ -165,8 +165,9 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   <main class="page" :class="{ split: wide }">
     <div class="list-col">
       <header class="topbar">
-        <h1>Hisaab</h1>
+        <h1 class="brand">Hisaab</h1>
         <SyncDot />
+        <span class="grow" />
         <button v-if="wide && !empty" class="icon-btn" aria-label="Add a payment" @click="adding = true"><Plus :size="22" /></button>
         <NuxtLink v-if="!empty" to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
       </header>
@@ -313,6 +314,13 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 </template>
 
 <style scoped>
+/* The sync dot sits right after the name (as in Befikr). */
+.topbar h1.brand {
+  flex: none;
+}
+.grow {
+  flex: 1;
+}
 .total {
   display: block;
   text-align: left;
