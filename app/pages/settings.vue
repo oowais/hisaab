@@ -14,6 +14,7 @@ import {
   FolderSync,
   Power,
   RefreshCw,
+  Tags,
   WifiOff,
 } from 'lucide-vue-next'
 import type { DesktopPrefs, ReminderStatus, Settings } from '~/composables/api'
@@ -219,6 +220,11 @@ async function setDesktop(f: () => Promise<void>) {
 
     <h2 class="section-title">Data</h2>
     <div class="pane rows">
+      <NuxtLink to="/lists" class="item link">
+        <Tags :size="20" class="muted" />
+        <span class="flex">Categories and payment methods</span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
       <NuxtLink to="/archive" class="item link">
         <Archive :size="20" class="muted" />
         <span class="flex">Ended and archived</span>

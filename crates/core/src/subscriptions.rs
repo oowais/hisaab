@@ -267,6 +267,13 @@ fn split(periods: &mut Vec<Period>, i: usize, at: NaiveDate) -> usize {
     i + 1
 }
 
+/// Live subscriptions whose `col` is `id`.
+fn ids_where(c: &Connection, col: &str, id: &str) -> Result<Vec<String>> {
+    let mut st = c.prepare(&format!("SELECT id FROM subscription WHERE {col} = ?1 AND deleted_at IS NULL"))?;
+    let rows = st.query_map([id], |r| r.get(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
 impl Store {
     // ---- Categories and payment methods ----
 
@@ -309,14 +316,30 @@ impl Store {
         })
     }
 
-    /// Soft delete; subscriptions in it become uncategorised.
-    pub fn delete_category(&mut self, id: &str) -> Result<()> {
+    /// Soft delete; subscriptions in it become uncategorised. Returns them,
+    /// for [`Store::restore_category`] (undo).
+    pub fn delete_category(&mut self, id: &str) -> Result<Vec<String>> {
         self.write(|c, now| {
+            let subs = ids_where(c, "category_id", id)?;
             c.execute("UPDATE category SET deleted_at = ?2, updated_at = ?2 WHERE id = ?1", params![id, now])?;
             c.execute(
                 "UPDATE subscription SET category_id = NULL, updated_at = ?2 WHERE category_id = ?1",
                 params![id, now],
             )?;
+            Ok(subs)
+        })
+    }
+
+    /// Undo [`Store::delete_category`]: back, with `subs` in it again.
+    pub fn restore_category(&mut self, id: &str, subs: &[String]) -> Result<()> {
+        self.write(|c, now| {
+            c.execute("UPDATE category SET deleted_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
+            for s in subs {
+                c.execute(
+                    "UPDATE subscription SET category_id = ?2, updated_at = ?3 WHERE id = ?1 AND category_id IS NULL",
+                    params![s, id, now],
+                )?;
+            }
             Ok(())
         })
     }
@@ -358,14 +381,43 @@ impl Store {
         })
     }
 
-    /// Soft delete; subscriptions paid with it lose the link.
-    pub fn delete_payment_method(&mut self, id: &str) -> Result<()> {
+    /// Soft delete; subscriptions paid with it lose the link. Returns them,
+    /// for [`Store::restore_payment_method`] (undo).
+    pub fn delete_payment_method(&mut self, id: &str) -> Result<Vec<String>> {
         self.write(|c, now| {
+            let subs = ids_where(c, "payment_method_id", id)?;
             c.execute("UPDATE payment_method SET deleted_at = ?2, updated_at = ?2 WHERE id = ?1", params![id, now])?;
             c.execute(
                 "UPDATE subscription SET payment_method_id = NULL, updated_at = ?2 WHERE payment_method_id = ?1",
                 params![id, now],
             )?;
+            Ok(subs)
+        })
+    }
+
+    /// Undo [`Store::delete_payment_method`]: back, linked to `subs` again.
+    pub fn restore_payment_method(&mut self, id: &str, subs: &[String]) -> Result<()> {
+        self.write(|c, now| {
+            c.execute("UPDATE payment_method SET deleted_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
+            for s in subs {
+                c.execute(
+                    "UPDATE subscription SET payment_method_id = ?2, updated_at = ?3 WHERE id = ?1 AND payment_method_id IS NULL",
+                    params![s, id, now],
+                )?;
+            }
+            Ok(())
+        })
+    }
+
+    /// Reorder categories: `ids` in their new order.
+    pub fn sort_categories(&mut self, ids: &[String]) -> Result<()> {
+        self.write(|c, now| {
+            for (i, id) in ids.iter().enumerate() {
+                c.execute(
+                    "UPDATE category SET sort = ?2, updated_at = ?3 WHERE id = ?1 AND sort IS NOT ?2",
+                    params![id, i as i64, now],
+                )?;
+            }
             Ok(())
         })
     }

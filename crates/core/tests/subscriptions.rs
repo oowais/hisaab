@@ -241,10 +241,23 @@ fn categories_and_payment_methods() {
         })
         .unwrap();
     assert_eq!(sub.subscription.kind, Kind::Bill);
-    s.delete_category(&home.id).unwrap();
-    s.delete_payment_method(&visa.id).unwrap();
-    let sub = s.subscription(&sub.subscription.id).unwrap();
+    let in_home = s.delete_category(&home.id).unwrap();
+    let paid_with = s.delete_payment_method(&visa.id).unwrap();
+    let id = sub.subscription.id.clone();
+    assert_eq!((in_home.as_slice(), paid_with.as_slice()), ([id.clone()].as_slice(), [id.clone()].as_slice()));
+    let sub = s.subscription(&id).unwrap();
     assert_eq!((sub.subscription.category_id, sub.subscription.payment_method_id), (None, None));
-    assert_eq!(s.categories().unwrap(), [streaming]);
+    assert_eq!(s.categories().unwrap(), std::slice::from_ref(&streaming));
     assert!(s.payment_methods().unwrap().is_empty());
+
+    // Undo: back, with the links.
+    s.restore_category(&home.id, &in_home).unwrap();
+    s.restore_payment_method(&visa.id, &paid_with).unwrap();
+    let sub = s.subscription(&id).unwrap();
+    assert_eq!(sub.subscription.category_id.as_deref(), Some(home.id.as_str()));
+    assert_eq!(sub.subscription.payment_method_id.as_deref(), Some(visa.id.as_str()));
+
+    s.sort_categories(&[home.id.clone(), streaming.id.clone()]).unwrap();
+    let names: Vec<_> = s.categories().unwrap().into_iter().map(|c| c.name).collect();
+    assert_eq!(names, ["Home", "Streaming"]);
 }

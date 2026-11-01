@@ -208,6 +208,43 @@ fn add_category(db: State<Db>, name: String, color: String) -> Res<Category> {
 }
 
 #[tauri::command]
+fn update_category(app: AppHandle, cat: Category) -> Res<()> {
+    write(&app, |s| s.update_category(&cat))
+}
+
+/// → the payments that were in it (for undo).
+#[tauri::command]
+fn delete_category(app: AppHandle, id: String) -> Res<Vec<String>> {
+    write(&app, |s| s.delete_category(&id))
+}
+
+#[tauri::command]
+fn restore_category(app: AppHandle, id: String, subs: Vec<String>) -> Res<()> {
+    write(&app, |s| s.restore_category(&id, &subs))
+}
+
+#[tauri::command]
+fn sort_categories(app: AppHandle, ids: Vec<String>) -> Res<()> {
+    write(&app, |s| s.sort_categories(&ids))
+}
+
+#[tauri::command]
+fn rename_payment_method(app: AppHandle, id: String, name: String) -> Res<()> {
+    write(&app, |s| s.rename_payment_method(&id, &name))
+}
+
+/// → the payments that used it (for undo).
+#[tauri::command]
+fn delete_payment_method(app: AppHandle, id: String) -> Res<Vec<String>> {
+    write(&app, |s| s.delete_payment_method(&id))
+}
+
+#[tauri::command]
+fn restore_payment_method(app: AppHandle, id: String, subs: Vec<String>) -> Res<()> {
+    write(&app, |s| s.restore_payment_method(&id, &subs))
+}
+
+#[tauri::command]
 fn add_payment_method(db: State<Db>, name: String) -> Res<PaymentMethod> {
     with(&db, |s| s.add_payment_method(&name))
 }
@@ -510,6 +547,13 @@ pub fn run() {
             delete_override,
             add_category,
             add_payment_method,
+            update_category,
+            delete_category,
+            restore_category,
+            sort_categories,
+            rename_payment_method,
+            delete_payment_method,
+            restore_payment_method,
             update_setting,
             refresh_rates,
             ensure_rates,
