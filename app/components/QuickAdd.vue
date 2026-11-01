@@ -165,7 +165,8 @@ async function save() {
       <template v-if="!chosen">
         <input
           ref="search"
-          v-model="query"
+          :value="query"
+          @input="query = ($event.target as HTMLInputElement).value"
           class="main-input"
           placeholder="Netflix, rent, gym…"
           enterkeyhint="next"

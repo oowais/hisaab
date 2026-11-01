@@ -31,7 +31,14 @@ function pick(c: string) {
   <div class="backdrop" @click.self="emit('close')">
     <div class="sheet popover" role="dialog" aria-label="Currency">
       <header class="head">
-        <input v-model="query" class="field" placeholder="Search currencies" autocapitalize="characters" />
+        <!-- :value + @input, not v-model: v-model waits for the Android keyboard to commit the word. -->
+        <input
+          :value="query"
+          @input="query = ($event.target as HTMLInputElement).value"
+          class="field"
+          placeholder="Search currencies"
+          autocapitalize="characters"
+        />
         <button class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>
       </header>
       <ul class="list">
