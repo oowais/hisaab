@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // One upcoming charge. Tap opens the subscription; swipe left moves this
-// charge to another day; long-press / right-click opens the menu.
+// charge to another day; long-press / right-click opens the menu. `card`:
+// its own card tinted with the payment's colour (Home), not a row in a pane.
 import { CalendarArrowUp } from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
 
-const props = defineProps<{ charge: UpcomingCharge; sub: SubscriptionView; main: string; today: string }>()
+const props = defineProps<{ charge: UpcomingCharge; sub: SubscriptionView; main: string; today: string; card?: boolean }>()
 const emit = defineEmits<{ open: []; move: []; menu: [e: MouseEvent] }>()
 
 const when = computed(() => dueIn(props.charge.dueDate, props.today))
@@ -80,7 +81,13 @@ function open() {
 </script>
 
 <template>
-  <li ref="el" class="row" @contextmenu="menu">
+  <li
+    ref="el"
+    class="row"
+    :class="{ 'tint-card': card }"
+    :style="card ? { '--c': sub.color || fallbackColor(sub.name) } : undefined"
+    @contextmenu="menu"
+  >
     <div v-if="dx < 0" class="reveal" :class="{ past }"><CalendarArrowUp :size="22" /></div>
     <div
       class="swipe"
@@ -125,6 +132,12 @@ function open() {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.row.tint-card {
+  margin: 0;
+}
+.tint-card .swipe {
+  padding: 12px 14px;
 }
 .swipe.dragging {
   transition: none;

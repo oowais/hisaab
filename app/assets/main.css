@@ -534,3 +534,24 @@ svg.lucide {
     border-width: 3px;
   }
 }
+
+/* Hisaab: a payment as a card tinted with its colour (`--c`), on Home. The
+   outline mixes in the muted ink so black brand colours still show. Paused:
+   mostly gray; ended or archived: gray and faint. */
+.tint-card {
+  list-style: none;
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--c) 14%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--c) 65%, var(--muted));
+}
+.tint-card.selected {
+  background: color-mix(in oklch, var(--c) 28%, transparent);
+}
+.tint-card.paused {
+  filter: grayscale(0.85);
+  opacity: 0.7;
+}
+.tint-card.ended {
+  filter: grayscale(1);
+  opacity: 0.45;
+}

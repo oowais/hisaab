@@ -260,8 +260,14 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 
         <section v-if="trials.length">
           <h2 class="section-title">Free trials</h2>
-          <ul class="pane rows list">
-            <li v-for="{ s, left } in trials" :key="s.id" :class="{ selected: wide && s.id === selected }">
+          <ul class="cards">
+            <li
+              v-for="{ s, left } in trials"
+              :key="s.id"
+              class="tint-card"
+              :class="{ selected: wide && s.id === selected }"
+              :style="{ '--c': s.color || fallbackColor(s.name) }"
+            >
               <button class="sub-row" @click="open(s.id)">
                 <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
                 <span class="flex stack">
@@ -276,10 +282,11 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
           </ul>
         </section>
 
-        <ul v-if="rows.length" class="pane rows list main-list">
+        <ul v-if="rows.length" class="cards">
           <template v-for="{ s, c } in rows" :key="s.id">
             <ChargeRow
               v-if="c"
+              card
               :charge="c"
               :class="{ selected: wide && s.id === selected }"
               :sub="s"
@@ -289,8 +296,13 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
               @move="moving = c"
               @menu="menu($event, c)"
             />
-            <li v-else>
-              <button class="sub-row" :class="{ selected: wide && s.id === selected }" @click="open(s.id)">
+            <li
+              v-else
+              class="tint-card"
+              :class="{ selected: wide && s.id === selected }"
+              :style="{ '--c': s.color || fallbackColor(s.name) }"
+            >
+              <button class="sub-row" @click="open(s.id)">
                 <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
                 <span class="flex">{{ s.name }}</span>
                 <span class="muted small">No charge coming</span>
@@ -306,8 +318,14 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
             <span class="flex">{{ paused.length }} paused</span>
             <component :is="showPaused ? ChevronUp : ChevronDown" :size="20" class="muted" />
           </button>
-          <ul v-if="showPaused" class="pane rows list">
-            <li v-for="s in paused" :key="s.id">
+          <ul v-if="showPaused" class="cards">
+            <li
+              v-for="s in paused"
+              :key="s.id"
+              class="tint-card paused"
+              :class="{ selected: wide && s.id === selected }"
+              :style="{ '--c': s.color || fallbackColor(s.name) }"
+            >
               <button class="sub-row" @click="open(s.id)">
                 <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
                 <span class="flex">{{ s.name }}</span>
@@ -323,9 +341,15 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
               ><Archive :size="15" /> Manage</NuxtLink
             >
           </h2>
-          <ul class="pane rows list over">
-            <li v-for="s in over" :key="s.id">
-              <button class="sub-row" :class="{ selected: wide && s.id === selected }" @click="open(s.id)">
+          <ul class="cards">
+            <li
+              v-for="s in over"
+              :key="s.id"
+              class="tint-card ended"
+              :class="{ selected: wide && s.id === selected }"
+              :style="{ '--c': s.color || fallbackColor(s.name) }"
+            >
+              <button class="sub-row" @click="open(s.id)">
                 <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
                 <span class="flex">{{ s.name }}</span>
                 <span class="muted small">{{ overText(s) }}</span>
@@ -445,9 +469,15 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   text-decoration: none;
 }
 /* Over: still there, grayed out. */
-.over .sub-row {
-  opacity: 0.5;
-  filter: grayscale(1);
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.cards .sub-row {
+  padding: 12px 14px;
 }
 .quiet {
   margin-top: 24px;
@@ -462,7 +492,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   padding: 12px 14px;
   text-align: left;
 }
-.paused-row + .list {
+.paused-row + .cards {
   margin-top: 8px;
 }
 .sub-row {
@@ -530,7 +560,8 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   justify-content: center;
   gap: 8px;
 }
-.selected {
+/* Tinted cards show it with a stronger tint (main.css). */
+.selected:not(.tint-card) {
   background: var(--glass-state);
 }
 .soon {

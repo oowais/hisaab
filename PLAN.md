@@ -299,6 +299,7 @@ Milestone 8 so far:
 - [x] Quick add and Edit as grouped chips (Nov 1, 2026): subscription / bill, category, paid with, your part always shown; free trial, amount varies, plan, reminder, link, note behind "+" chips (`PaymentDetails.vue`, `ChoiceChips.vue`). Edit gains category and payment method. 16 pre-made categories (`app/utils/categories.ts`) offered next to yours, saved on first use with fixed ids (core `ensure_category`) so devices don't duplicate them; a template picks its usual category
 - [x] Home (Nov 1, 2026, was Upcoming): one row per running payment with its nearest charge from today (one-time ones too; a passed charge rolls to the next), "in 8 days" / "in 2 months"; sort menu (next charge, name, most / least expensive, category; remembered); free trials, paused, ended and archived as before
 - [x] Home filter (Nov 1, 2026): filter button (dot when on) opens a sheet: subscriptions / bills (when both) and any categories ("No category" too), each with its yearly cost; applies as you tap, remembered on the device; the active filter shows as a chip under the total (tap to change, × to clear). Totals follow the filter
+- [x] Home cards (Nov 1, 2026): each payment its own card tinted with its colour and outlined in it (`.tint-card`, main.css); paused mostly gray, ended and archived gray and faint
 
 - [ ] CSV/Wallos import: skipped for now (Nov 1, 2026), by choice
 
