@@ -5,7 +5,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{schema, Error, Result};
+use crate::{schema, sync, Error, Result};
 
 /// App-wide settings (synced). Theme and the like are per device (frontend).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -26,7 +26,7 @@ pub struct Store {
     clock: Box<dyn Fn() -> i64 + Send>,
 }
 
-fn system_now() -> i64 {
+pub(crate) fn system_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
@@ -51,6 +51,7 @@ impl Store {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
         schema::migrations().to_latest(&mut conn).map_err(|e| Error::Migration(e.to_string()))?;
+        sync::install(&conn)?;
         Ok(Self { conn, clock: Box::new(system_now) })
     }
 
@@ -67,6 +68,7 @@ impl Store {
     pub(crate) fn write<T>(&mut self, f: impl FnOnce(&Connection, i64) -> Result<T>) -> Result<T> {
         let now = self.now();
         let tx = self.conn.transaction()?;
+        sync::bump_clock(&tx, now)?;
         let out = f(&tx, now)?;
         tx.commit()?;
         Ok(out)
@@ -135,5 +137,91 @@ impl Store {
             return Err(Error::Invalid(format!("bad value for {key}")));
         }
         self.set_setting(key, value)
+    }
+
+    // ------------------------------------------------------------ backup
+
+    /// Consistent snapshot via `VACUUM INTO`.
+    pub fn export_to(&self, path: &str) -> Result<()> {
+        // VACUUM INTO refuses to overwrite.
+        let _ = std::fs::remove_file(path);
+        self.conn.execute("VACUUM INTO ?1", [path])?;
+        Ok(())
+    }
+
+    /// Replace everything with a snapshot made by [`Store::export_to`]. The
+    /// live connection stays open (SQLite backup API), then migrations bring
+    /// an older snapshot up to date. Refuses files that aren't Hisaab
+    /// databases or come from a newer app version.
+    pub fn import_from(&mut self, path: &str) -> Result<()> {
+        let src = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(|_| Error::Invalid("not a database file".into()))?;
+        let is_hisaab: bool = src
+            .query_row("SELECT count(*) = 1 FROM sqlite_master WHERE type = 'table' AND name = 'subscription'", [], |r| {
+                r.get(0)
+            })
+            .map_err(|_| Error::Invalid("not a database file".into()))?;
+        if !is_hisaab {
+            return Err(Error::Invalid("not a Hisaab backup".into()));
+        }
+        let version: i64 = src.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        let latest: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        if version > latest {
+            return Err(Error::Invalid("backup is from a newer version of Hisaab; update the app first".into()));
+        }
+        // The snapshot may come from another device: keep this one's sync
+        // id, settings and paired devices.
+        let sync = self.sync_settings()?;
+        let peers = self.peers()?;
+        // Reminders already shown here stay shown (the snapshot's state is older).
+        let fired: Vec<(String, i64)> = self
+            .conn
+            .prepare("SELECT subscription_id, fired_through FROM reminder_state")?
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        let seq_before = self.last_seq()?.max(self.conn.query_row(
+            "SELECT coalesce(max(seq), 0) FROM sqlite_sequence WHERE name = 'changes'",
+            [],
+            |r| r.get::<_, i64>(0),
+        )?);
+        rusqlite::backup::Backup::new(&src, &mut self.conn)?
+            .run_to_completion(256, std::time::Duration::from_millis(0), None)?;
+        schema::migrations().to_latest(&mut self.conn).map_err(|e| Error::Migration(e.to_string()))?;
+        self.conn.execute("UPDATE sync_state SET device = ?1, applying = 0", [&sync.device])?;
+        self.set_sync_mode(sync.mode)?;
+        if !sync.name.is_empty() {
+            self.set_device_name(&sync.name)?;
+        }
+        // Peers already have our changes up to seq_before: new ones must come
+        // after it, or they'd never be sent (the snapshot's counter is lower).
+        let bumped = self
+            .conn
+            .execute("UPDATE sqlite_sequence SET seq = max(seq, ?1) WHERE name = 'changes'", [seq_before])?;
+        if bumped == 0 {
+            self.conn.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('changes', ?1)", [seq_before])?;
+        }
+        // Paired devices stay paired, but we ask each for everything again
+        // (their_seq 0): what they sent after the snapshot was rolled back
+        // here. Merging is per-field newest-wins, so repeats are harmless.
+        // Open conflicts in the snapshot are stale (maybe settled since).
+        self.conn.execute(
+            "UPDATE conflicts SET deleted_at = ?1, updated_at = ?1 WHERE deleted_at IS NULL AND resolution IS NULL",
+            [self.now()],
+        )?;
+        for (sub, at) in fired {
+            self.conn.execute(
+                "INSERT INTO reminder_state (subscription_id, fired_through) VALUES (?1, ?2)
+                 ON CONFLICT(subscription_id) DO UPDATE SET fired_through = max(fired_through, excluded.fired_through)",
+                params![sub, at],
+            )?;
+        }
+        self.conn.execute("DELETE FROM peers", [])?; // device-local table, replaced wholesale
+        for p in peers {
+            self.add_peer(&p.endpoint, &p.device, &p.name)?;
+            self.set_peer_addrs(&p.endpoint, &p.addrs)?;
+            self.set_peer_kind(&p.endpoint, &p.kind)?;
+        }
+        sync::install(&self.conn)?;
+        Ok(())
     }
 }

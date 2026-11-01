@@ -125,7 +125,7 @@ fn override_row(r: &Row) -> rusqlite::Result<ChargeOverride> {
     })
 }
 
-fn load_periods(c: &Connection, sub_id: &str) -> Result<Vec<Period>> {
+pub(crate) fn load_periods(c: &Connection, sub_id: &str) -> Result<Vec<Period>> {
     let mut st = c.prepare(&format!(
         "SELECT {PERIOD_COLS} FROM period WHERE subscription_id = ?1 AND deleted_at IS NULL ORDER BY start_date"
     ))?;
