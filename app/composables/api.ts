@@ -85,6 +85,8 @@ export type HistoryCharge = Charge & { inMain: number | null; overrideId: string
 export type Detail = SubscriptionView & {
   periods: Period[]
   history: HistoryCharge[]
+  /** Coming charges to the end of next month, soonest first. */
+  coming: HistoryCharge[]
   totalSpent: number
   excludedCurrencies: string[]
   historyFrom: string | null
@@ -185,7 +187,7 @@ export const api = {
   setArchived: (id: string, archived: boolean) => invoke<void>('set_archived', { id, archived }),
   deleteSubscription: (id: string) => invoke<void>('delete_subscription', { id }),
   restoreSubscription: (id: string) => invoke<void>('restore_subscription', { id }),
-  setOverride: (o: NewOverride) => invoke<unknown>('set_override', { o }),
+  setOverride: (o: NewOverride) => invoke<{ id: string }>('set_override', { o }),
   deleteOverride: (id: string) => invoke<void>('delete_override', { id }),
   addCategory: (name: string, color = '') => invoke<Category>('add_category', { name, color }),
   addPaymentMethod: (name: string) => invoke<PaymentMethod>('add_payment_method', { name }),

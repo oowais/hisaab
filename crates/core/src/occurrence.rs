@@ -66,7 +66,7 @@ pub fn occurrences(
             }
         }
         // Moved into the range from a date outside it.
-        for o in overrides.iter().filter(|o| o.period_id == p.id && o.kind == OverrideKind::Moved) {
+        for o in overrides.iter().filter(|o| o.period_id == p.id && o.kind != OverrideKind::Skipped) {
             let inside = |d: NaiveDate| (from..=to).contains(&d);
             if !inside(o.due_date) && o.new_due_date.is_some_and(inside) && is_scheduled(p, o.due_date) {
                 out.extend(apply(p, o.due_date, o, today));
@@ -106,12 +106,15 @@ fn charge(p: &Period, due: NaiveDate, scheduled: NaiveDate, today: NaiveDate, o:
     }
 }
 
+/// A moved charge keeps its new date when its amount is set too (any kind
+/// but skipped may carry `new_due_date`).
 fn apply(p: &Period, scheduled: NaiveDate, o: &ChargeOverride, today: NaiveDate) -> Option<Charge> {
+    let due = o.new_due_date.unwrap_or(scheduled);
     match o.kind {
         OverrideKind::Skipped => None,
         OverrideKind::Moved => o.new_due_date.map(|d| charge(p, d, scheduled, today, Some(o))),
         OverrideKind::AmountChanged => {
-            let mut c = charge(p, scheduled, scheduled, today, Some(o));
+            let mut c = charge(p, due, scheduled, today, Some(o));
             if let Some(a) = o.actual_amount_minor {
                 c.amount_minor = a;
             }
@@ -121,6 +124,6 @@ fn apply(p: &Period, scheduled: NaiveDate, o: &ChargeOverride, today: NaiveDate)
             c.estimated = false;
             Some(c)
         }
-        OverrideKind::Settled => Some(charge(p, scheduled, scheduled, today, Some(o))),
+        OverrideKind::Settled => Some(charge(p, due, scheduled, today, Some(o))),
     }
 }

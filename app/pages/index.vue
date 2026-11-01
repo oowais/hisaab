@@ -72,10 +72,12 @@ async function moveTo(day: string | null) {
     toast.show({ message: friendlyError(e, 'move the charge') })
   }
 }
+const editing = ref<UpcomingCharge | null>(null)
 const open = (id: string, action?: string) => router.push({ path: `/sub/${id}`, query: action ? { action } : {} })
 function menu(e: MouseEvent, c: UpcomingCharge) {
   openMenu(e, [
     { label: 'Move this charge', icon: CalendarClock, run: () => (moving.value = c) },
+    { label: 'Change this charge', icon: Pencil, run: () => (editing.value = c) },
     'separator',
     { label: 'Pause', icon: CirclePause, run: () => open(c.subscriptionId, 'pause') },
     { label: 'Change price', icon: Pencil, run: () => open(c.subscriptionId, 'price') },
@@ -167,6 +169,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 
     <button v-if="!empty" class="fab ink" aria-label="Add a payment" @click="adding = true"><Plus :size="26" /></button>
     <QuickAdd v-if="adding" @close="adding = false" />
+    <ChargeSheet v-if="editing" :charge="editing" :name="byId.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
     <DateSheet
       v-if="moving"
       :model-value="moving.dueDate"

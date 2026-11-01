@@ -167,6 +167,9 @@ const strip = computed(() => {
   }))
 })
 
+// ---- One charge differed (amount, date, skipped): the charge sheet.
+const editingCharge = ref<HistoryCharge | null>(null)
+
 async function undoOverride(c: HistoryCharge) {
   if (!c.overrideId) return
   await api
@@ -175,7 +178,10 @@ async function undoOverride(c: HistoryCharge) {
     .catch((e) => toast.show({ message: friendlyError(e, 'undo it') }))
 }
 function chargeMenu(e: MouseEvent, c: HistoryCharge) {
-  if (c.overrideId) openMenu(e, [{ label: 'Back to the usual charge', icon: Undo2, run: () => undoOverride(c) }])
+  openMenu(e, [
+    { label: 'Edit this charge', icon: Pencil, run: () => (editingCharge.value = c) },
+    ...(c.overrideId ? [{ label: 'Back to the usual charge', icon: Undo2, run: () => undoOverride(c) }] : []),
+  ])
 }
 </script>
 
@@ -240,6 +246,25 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
         </li>
       </ul>
 
+      <template v-if="sub.coming.length">
+        <h2 class="section-title">Coming</h2>
+        <ul class="pane rows list">
+          <li v-for="c in sub.coming" :key="`${c.periodId}-${c.scheduledDate}`" class="item" @contextmenu="chargeMenu($event, c)">
+            <button class="charge" @click="editingCharge = c">
+              <span class="flex">
+                {{ shortDay(c.dueDate, today) }}
+                <span v-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
+                <span v-else-if="c.estimated" class="muted small">· about</span>
+              </span>
+              <span class="amount">
+                <span>{{ money(c.amountMinor, c.currency) }}</span>
+                <span v-if="c.currency !== main && c.inMain != null" class="muted small">{{ money(c.inMain, main) }}</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </template>
+
       <template v-if="sub.history.length">
         <h2 class="section-title">
           Total spent: {{ money(sub.totalSpent, main) }}
@@ -247,16 +272,19 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
         </h2>
         <ul class="pane rows list">
           <li v-for="c in sub.history" :key="`${c.periodId}-${c.scheduledDate}`" class="item" @contextmenu="chargeMenu($event, c)">
-            <span class="flex">
-              {{ shortDay(c.dueDate, today) }}
-              <span v-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
-            </span>
-            <span class="amount">
-              <span>{{ money(c.settledAmountMinor ?? c.amountMinor, c.settledCurrency ?? c.currency) }}</span>
-              <span v-if="(c.settledCurrency ?? c.currency) !== main && c.inMain != null" class="muted small">{{
-                money(c.inMain, main)
-              }}</span>
-            </span>
+            <button class="charge" @click="editingCharge = c">
+              <span class="flex">
+                {{ shortDay(c.dueDate, today) }}
+                <span v-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
+                <span v-else-if="c.estimated" class="muted small">· estimate</span>
+              </span>
+              <span class="amount">
+                <span>{{ money(c.settledAmountMinor ?? c.amountMinor, c.settledCurrency ?? c.currency) }}</span>
+                <span v-if="(c.settledCurrency ?? c.currency) !== main && c.inMain != null" class="muted small">{{
+                  money(c.inMain, main)
+                }}</span>
+              </span>
+            </button>
             <button v-if="c.overrideId" class="icon-btn" aria-label="Back to the usual charge" @click="undoOverride(c)">
               <Undo2 :size="16" />
             </button>
@@ -265,6 +293,13 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
       </template>
     </template>
 
+    <ChargeSheet
+      v-if="editingCharge && sub"
+      :charge="editingCharge"
+      :name="sub.name"
+      :override-id="editingCharge.overrideId"
+      @close="editingCharge = null"
+    />
     <ActionSheet v-if="acting && sub" :action="acting" :sub="sub" @close="acting = null" @done="done" />
     <SnoozeSheet
       v-if="snoozing && sub"
@@ -374,6 +409,16 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 .flex {
   flex: 1;
   min-width: 0;
+}
+.charge {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  text-align: left;
+  color: inherit;
 }
 .amount {
   display: flex;

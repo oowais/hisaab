@@ -124,6 +124,20 @@ fn overrides_skip_move_amount_and_settled() {
 }
 
 #[test]
+fn a_moved_charge_keeps_its_date_when_its_amount_is_set() {
+    let p = active("p", monthly(1000), "2026-01-31", "2026-01-31", None);
+    let paid = ChargeOverride {
+        new_due_date: Some(d("2026-02-02")),
+        settled_amount_minor: Some(990),
+        settled_currency: Some("EUR".into()),
+        ..ov(OverrideKind::Settled, "2026-01-31")
+    };
+    let cs = occurrences(&[p], &[paid], d("2026-02-01"), d("2026-02-28"), d("2026-12-31"));
+    assert_eq!(dates(&cs), ["2026-02-02", "2026-02-28"]);
+    assert_eq!(cs[0].settled_amount_minor, Some(990));
+}
+
+#[test]
 fn moved_across_the_range_edge() {
     let p = active("p", monthly(1000), "2026-01-31", "2026-01-31", None);
     let into = ChargeOverride { new_due_date: Some(d("2026-02-02")), ..ov(OverrideKind::Moved, "2026-01-31") };

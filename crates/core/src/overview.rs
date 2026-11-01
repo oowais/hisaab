@@ -81,11 +81,18 @@ pub struct Detail {
     pub periods: Vec<Period>,
     /// Paid charges, newest first.
     pub history: Vec<HistoryCharge>,
+    /// Coming charges to the end of next month, soonest first (to edit one).
+    pub coming: Vec<HistoryCharge>,
     pub total_spent: i64,
     /// History currencies with no rate (left out of `total_spent`).
     pub excluded_currencies: Vec<String>,
     /// First day a rate is needed for the history (None: no history).
     pub history_from: Option<NaiveDate>,
+}
+
+/// The override that made `c` differ, if any.
+fn override_of(overrides: &[ChargeOverride], c: &Charge) -> Option<String> {
+    overrides.iter().find(|o| o.period_id == c.period_id && o.due_date == c.scheduled_date).map(|o| o.id.clone())
 }
 
 /// Last day of the month after `today`'s.
@@ -191,17 +198,21 @@ impl Store {
                     Some(v) => total_spent += v,
                     None => excluded.push(c.currency.clone()),
                 }
-                let override_id = s
-                    .overrides
-                    .iter()
-                    .find(|o| o.period_id == c.period_id && o.due_date == c.scheduled_date)
-                    .map(|o| o.id.clone());
+                let override_id = override_of(&s.overrides, &c);
                 history.push(HistoryCharge { charge: c, in_main, override_id });
             }
         }
         excluded.sort();
         excluded.dedup();
-        Ok(Detail { view, periods: s.periods, history, total_spent, excluded_currencies: excluded, history_from })
+        let mut coming = Vec::new();
+        if let Some(from) = today.succ_opt() {
+            for c in occurrences(&s.periods, &s.overrides, from, end_of_next_month(today), today) {
+                let in_main = self.charge_in(&c, &main)?;
+                let override_id = override_of(&s.overrides, &c);
+                coming.push(HistoryCharge { charge: c, in_main, override_id });
+            }
+        }
+        Ok(Detail { view, periods: s.periods, history, coming, total_spent, excluded_currencies: excluded, history_from })
     }
 }
 
