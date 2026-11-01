@@ -276,7 +276,7 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
               <span class="flex">
                 {{ shortDay(c.dueDate, today) }}
                 <span v-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
-                <span v-else-if="c.estimated" class="muted small">· estimate</span>
+                <span v-else-if="c.estimated" class="small hint">· add the real amount</span>
               </span>
               <span class="amount">
                 <span>{{ money(c.settledAmountMinor ?? c.amountMinor, c.settledCurrency ?? c.currency) }}</span>
@@ -409,6 +409,9 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 .flex {
   flex: 1;
   min-width: 0;
+}
+.hint {
+  color: var(--orange);
 }
 .charge {
   flex: 1;

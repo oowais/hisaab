@@ -5,6 +5,8 @@
 //! kept within `[start_date, end_date]`. Each date is `anchor + k·interval`
 //! (see `dates::nth`), so month-end anchors clamp per month without drifting.
 //! Then overrides apply (skip, move, other amount, settled amount).
+//! Variable bills (estimated amount): a charge without its real figure
+//! costs the average of the last 3 real ones entered before it.
 
 use std::collections::HashMap;
 
@@ -73,6 +75,11 @@ pub fn occurrences(
             }
         }
     }
+    for c in out.iter_mut().filter(|c| c.estimated && !c.is_override) {
+        if let Some(avg) = learned_estimate(periods, overrides, c) {
+            c.amount_minor = avg;
+        }
+    }
     out.sort_by(|a, b| {
         (a.due_date, &a.subscription_id, &a.period_id, a.scheduled_date).cmp(&(
             b.due_date,
@@ -82,6 +89,28 @@ pub fn occurrences(
         ))
     });
     out
+}
+
+/// Average of the last 3 real amounts (in `c`'s currency) entered for
+/// charges scheduled before `c`.
+fn learned_estimate(periods: &[Period], overrides: &[ChargeOverride], c: &Charge) -> Option<i64> {
+    fn currency_of<'a>(periods: &'a [Period], o: &'a ChargeOverride) -> Option<&'a str> {
+        o.actual_currency.as_deref().or_else(|| periods.iter().find(|p| p.id == o.period_id).map(|p| p.terms.currency.as_str()))
+    }
+    let mut real: Vec<(NaiveDate, i64)> = overrides
+        .iter()
+        .filter(|o| o.kind == OverrideKind::AmountChanged && o.due_date < c.scheduled_date)
+        .filter(|o| currency_of(periods, o) == Some(c.currency.as_str()))
+        .filter_map(|o| Some((o.due_date, o.actual_amount_minor?)))
+        .collect();
+    real.sort_by_key(|r| std::cmp::Reverse(r.0));
+    real.truncate(3);
+    if real.is_empty() {
+        return None;
+    }
+    let n = real.len() as i64;
+    let sum: i64 = real.iter().map(|(_, a)| a).sum();
+    Some((sum + n / 2) / n)
 }
 
 /// The next charge due on or after `today` (searches 10 years ahead).
