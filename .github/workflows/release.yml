@@ -87,7 +87,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - run: vp exec tauri android init --ci
+      - run: vp run tauri android init --ci
 
       # App icon (adaptive + night + monochrome) and notification icon.
       # Source: src-tauri/android/icon/gen.py
@@ -105,7 +105,7 @@ jobs:
             cat "$f"
           done
 
-      - run: vp exec tauri android build --apk --target aarch64 --ci
+      - run: vp run tauri android build --apk --target aarch64 --ci
 
       # Same key every build so updates install over the previous version.
       # The key is a repo secret (src-tauri/android/README.md), never committed.
@@ -162,7 +162,7 @@ jobs:
           cache: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: vp exec tauri build --bundles deb --ci
+      - run: vp run tauri build --bundles deb --ci
       - name: Package
         run: |
           DEB="hisaab_${VERSION}_amd64.deb"
@@ -203,10 +203,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            vp exec tauri build --bundles nsis --ci --config '{"bundle":{"createUpdaterArtifacts":true}}'
+            vp run tauri build --bundles nsis --ci --config '{"bundle":{"createUpdaterArtifacts":true}}'
           else
             echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set: no in-app update for this release"
-            vp exec tauri build --bundles nsis --ci
+            vp run tauri build --bundles nsis --ci
           fi
       - name: Package
         run: |

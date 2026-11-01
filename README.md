@@ -29,7 +29,7 @@ Needs Rust, Node and [Vite+](https://viteplus.dev) (`vp`).
 
 ```bash
 vp install
-vp exec tauri dev
+vp run tauri dev
 ```
 
 Checks: `vp check`, `vp test`, `cargo test --workspace`.
