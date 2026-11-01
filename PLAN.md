@@ -200,15 +200,15 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 
 ### Build order and status
 
-| #   | Milestone                      | Status                                                               |
-| --- | ------------------------------ | -------------------------------------------------------------------- |
-| 1   | Scaffold + CI + in-app updates | Done (Nov 1, 2026): needs first push + secrets to verify the release |
-| 2   | Domain core                    | Next                                                                 |
-| 3   | MVP UI                         | —                                                                    |
-| 4   | Timeline                       | —                                                                    |
-| 5   | Notifications                  | —                                                                    |
-| 6   | Sync + backup                  | —                                                                    |
-| 7   | v1.1                           | —                                                                    |
+| #   | Milestone                      | Status                                                                                        |
+| --- | ------------------------------ | --------------------------------------------------------------------------------------------- |
+| 1   | Scaffold + CI + in-app updates | Done (Nov 1, 2026): released 0.1.1, Android update verified; Windows and Linux still to check |
+| 2   | Domain core                    | Next                                                                                          |
+| 3   | MVP UI                         | —                                                                                             |
+| 4   | Timeline                       | —                                                                                             |
+| 5   | Notifications                  | —                                                                                             |
+| 6   | Sync + backup                  | —                                                                                             |
+| 7   | v1.1                           | —                                                                                             |
 
 Milestone 1 checklist:
 
@@ -218,7 +218,8 @@ Milestone 1 checklist:
 - [x] App icon (`src-tauri/android/icon/gen.py`) for Android and desktop
 - [x] CI: `release.yml` (APK + .deb/PKGBUILD + NSIS + latest.json on push to main), `core.yml`, `web.yml`, Dependabot
 - [x] Linux install/update script (`scripts/install-arch.sh`)
-- [ ] Set repo secrets, first push, install the APK from the release, confirm an in-app update on Android and Windows
+- [x] Set repo secrets, first push, install the APK from the release, confirm an in-app update on Android (0.1.0 → 0.1.1, Nov 1, 2026)
+- [ ] Confirm the in-app update on Windows and `scripts/install-arch.sh` on Linux
 
 **Next:** milestone 2 — schema for category / payment_method / subscription / period / charge_override / fx_rate, repositories, occurrence engine, invariants, currency conversion, with the required tests.
 
