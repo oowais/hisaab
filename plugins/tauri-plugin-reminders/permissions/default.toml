@@ -9,6 +9,7 @@ permissions = [
   "allow-take-launch-route",
   "allow-install-update",
   "allow-move-to-back",
+  "allow-open-url",
   "allow-backup-status",
   "allow-pick-backup-folder",
   "allow-clear-backup-folder",

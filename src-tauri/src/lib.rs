@@ -453,6 +453,27 @@ async fn pick_import_file(app: AppHandle) -> Res<serde_json::Value> {
     Ok(serde_json::json!({ "path": desktop::backup::pick_import(&app)? }))
 }
 
+/// A web page (a payment's site or cancel page) in the default browser.
+/// Android: the reminders plugin's `open_url`.
+#[cfg(desktop)]
+#[tauri::command]
+fn open_url(url: String) -> Res<()> {
+    if !(url.starts_with("https://") || url.starts_with("http://")) || url.chars().any(char::is_whitespace) {
+        return Err("not a web link".into());
+    }
+    #[cfg(windows)]
+    let mut cmd = std::process::Command::new("explorer");
+    #[cfg(not(windows))]
+    let mut cmd = std::process::Command::new("xdg-open");
+    cmd.arg(&url).spawn().map(|_| ()).map_err(err)
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn open_url() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
 #[cfg(mobile)]
 #[tauri::command]
 fn backup_status() -> Res<()> {
@@ -565,6 +586,7 @@ pub fn run() {
             set_start_hidden,
             install_update,
             import_backup,
+            open_url,
             backup_status,
             pick_backup_folder,
             clear_backup_folder,

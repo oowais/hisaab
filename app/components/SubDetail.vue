@@ -141,12 +141,35 @@ function more(e: MouseEvent) {
   ])
 }
 
+// ---- Free trial: how long is left, what follows, where to cancel.
+const trial = computed(() => {
+  const s = sub.value
+  const p = s?.current
+  if (!s || s.status !== 'trial' || p?.status !== 'trial' || !p.endDate) return null
+  const total = Math.max(1, daysBetween(p.startDate, p.endDate) + 1)
+  const left = daysBetween(today, p.endDate)
+  const after = s.periods.find((x) => x.startDate > p.endDate! && x.status === 'active')
+  const then = after
+    ? `${money(after.amountMinor, after.currency)} ${intervalText(after.everyN, after.unit)} from ${shortDay(after.anchorDate, today)}`
+    : null
+  return { end: p.endDate, left, used: Math.min(1, Math.max(0, (total - left - 1) / total)), then }
+})
+const host = (url: string) =>
+  url
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0]
+async function visit(url: string) {
+  await openUrl(url).catch((e) => toast.show({ message: friendlyError(e, 'open the link') }))
+}
+
 // ---- Display
 const STATUS = { trial: 'Trial', active: 'Active', paused: 'Paused', ended: 'Ended' }
 const money = (minor: number, cur: string) => formatMoney(minor, cur)
 const price = computed(() => {
   const p = sub.value?.current
   if (!p) return ''
+  if (p.status === 'trial' && !p.amountMinor) return 'Free trial'
   // A variable bill: the estimate learned from its real amounts (the next charge's).
   const next = sub.value?.nextCharge
   const amount = p.amountKind === 'estimated' && next?.estimated && next.periodId === p.id ? next.amountMinor : p.amountMinor
@@ -157,11 +180,16 @@ const periods = computed(() =>
     ...p,
     label: [
       p.status === 'trial' ? 'Trial' : p.status === 'paused' ? 'Paused' : p.planLabel,
-      p.status === 'paused' ? null : `${money(p.amountMinor, p.currency)} ${intervalText(p.everyN, p.unit)}`,
+      p.status === 'paused'
+        ? null
+        : p.status === 'trial' && !p.amountMinor
+          ? 'free'
+          : `${money(p.amountMinor, p.currency)} ${intervalText(p.everyN, p.unit)}`,
     ]
       .filter(Boolean)
       .join(' · '),
-    range: `${monthYear(p.startDate)} – ${p.endDate ? monthYear(p.endDate) : 'now'}`,
+    range:
+      p.startDate > today ? `from ${monthYear(p.startDate)}` : `${monthYear(p.startDate)} – ${p.endDate ? monthYear(p.endDate) : 'now'}`,
     future: p.startDate > today,
   })),
 )
@@ -220,9 +248,22 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
             {{ money(sub.nextCharge.amountMinor, sub.nextCharge.currency) }}
             <template v-if="sub.nextCharge.currency !== main && sub.nextInMain != null"> · {{ money(sub.nextInMain, main) }}</template>
           </span>
-          <a v-if="sub.url" :href="sub.url" target="_blank" rel="noopener" class="link small"
-            ><ExternalLink :size="14" /> {{ sub.url.replace(/^https?:\/\//, '') }}</a
-          >
+          <button v-if="sub.url && sub.status !== 'trial'" type="button" class="link small" @click="visit(sub.url)">
+            <ExternalLink :size="14" /> {{ host(sub.url) }}
+          </button>
+        </div>
+      </section>
+
+      <section v-if="trial" class="pane trial-card" :class="{ soon: trial.left <= 2 }">
+        <div class="trial-head">
+          <b>{{ trial.left <= 0 ? 'Free trial ends today' : `Free trial · ${trial.left} ${trial.left === 1 ? 'day' : 'days'} left` }}</b>
+          <span class="muted small">ends {{ shortDay(trial.end, today) }}</span>
+        </div>
+        <span class="track"><span class="fill" :style="{ width: `${trial.used * 100}%` }" /></span>
+        <span v-if="trial.then" class="muted small">Then {{ trial.then }}, unless you cancel.</span>
+        <span v-else class="muted small">Ends by itself; nothing is charged after.</span>
+        <div v-if="trial.then && sub.url" class="trial-actions">
+          <button class="btn primary" @click="visit(sub.url)"><ExternalLink :size="16" /> Cancel at {{ host(sub.url) }}</button>
         </div>
       </section>
 
@@ -444,5 +485,42 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
   flex-direction: column;
   align-items: flex-end;
   font-variant-numeric: tabular-nums;
+}
+.trial-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  margin-top: 12px;
+}
+.trial-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--text);
+}
+.trial-card.soon b {
+  color: var(--orange);
+}
+.trial-card.soon .fill {
+  background: var(--orange);
+}
+.trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
 }
 </style>

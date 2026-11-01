@@ -238,6 +238,9 @@ export const api = {
   resolveConflict: (id: string, useMine: boolean) => invoke<void>('resolve_conflict', { id, useMine }),
 }
 
+/** A web page in the browser (desktop: the app's command; Android: the plugin's). */
+export const openUrl = (url: string) => invoke<void>(isAndroid ? 'plugin:reminders|open_url' : 'open_url', { url })
+
 /** Backups: the app's commands on desktop, the Android plugin's on a phone. */
 const backupCmd = (name: string) => (isAndroid ? `plugin:reminders|${name}` : name)
 export const backups = {

@@ -78,6 +78,13 @@ const groups = computed(() => {
   }
   return out.filter((g) => g.rows.length)
 })
+// Free trials that turn into paid ones, ending soonest first (cancel in time).
+const trials = computed(() =>
+  subs.value
+    .filter((s) => s.status === 'trial' && s.current?.status === 'trial' && s.current.endDate && s.nextCharge && shown(s))
+    .map((s) => ({ s, left: daysBetween(today.value, s.current!.endDate!) }))
+    .sort((a, b) => a.left - b.left),
+)
 const paused = computed(() => subs.value.filter((s) => s.status === 'paused' && shown(s)))
 const showPaused = ref(false)
 const endedCount = computed(() => subs.value.filter((s) => s.status === 'ended').length)
@@ -165,6 +172,24 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
             {{ { all: 'All', subscription: 'Subscriptions', bill: 'Bills' }[f] }}
           </button>
         </div>
+
+        <section v-if="trials.length">
+          <h2 class="section-title">Free trials</h2>
+          <ul class="pane rows list">
+            <li v-for="{ s, left } in trials" :key="s.id" :class="{ selected: wide && s.id === selected }">
+              <button class="sub-row" @click="open(s.id)">
+                <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
+                <span class="flex stack">
+                  <span>{{ s.name }}</span>
+                  <span class="small" :class="left <= 2 ? 'soon' : 'muted'">
+                    {{ left <= 0 ? 'Ends today' : left === 1 ? 'Ends tomorrow' : `Ends in ${left} days` }}
+                  </span>
+                </span>
+                <span class="muted small">then {{ formatMoney(s.nextCharge!.amountMinor, s.nextCharge!.currency) }}</span>
+              </button>
+            </li>
+          </ul>
+        </section>
 
         <section v-for="g in groups" :key="g.id">
           <h2 class="section-title">{{ g.title }}</h2>
@@ -277,6 +302,9 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   padding-top: 4px;
   padding-bottom: 4px;
 }
+.list > li {
+  list-style: none;
+}
 .archive-link {
   display: flex;
   align-items: center;
@@ -369,5 +397,14 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 }
 .selected {
   background: var(--glass-state);
+}
+.soon {
+  color: var(--orange);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
 }
 </style>

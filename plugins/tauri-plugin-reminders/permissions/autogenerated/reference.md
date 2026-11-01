@@ -12,6 +12,7 @@ Allows the app's native Android commands.
 - `allow-take-launch-route`
 - `allow-install-update`
 - `allow-move-to-back`
+- `allow-open-url`
 - `allow-backup-status`
 - `allow-pick-backup-folder`
 - `allow-clear-backup-folder`
@@ -260,6 +261,32 @@ Enables the open_exact_alarm_settings command without any pre-configured scope.
 <td>
 
 Denies the open_exact_alarm_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-open-url`
+
+</td>
+<td>
+
+Enables the open_url command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-open-url`
+
+</td>
+<td>
+
+Denies the open_url command without any pre-configured scope.
 
 </td>
 </tr>

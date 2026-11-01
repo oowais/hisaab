@@ -51,6 +51,7 @@ function choose(t: Template | null) {
     unit.value = t.unit ?? 'month'
     estimated.value = !!t.estimated
     if (t.currency) currency.value = t.currency
+    if (t.cancelUrl && !url.value.trim()) url.value = t.cancelUrl
   }
   nextTick(() => amountInput.value?.focus())
 }

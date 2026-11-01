@@ -7,6 +7,7 @@ const COMMANDS: &[&str] = &[
     "take_launch_route",
     "install_update",
     "move_to_back",
+    "open_url",
     "backup_status",
     "pick_backup_folder",
     "clear_backup_folder",

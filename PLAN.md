@@ -288,7 +288,11 @@ Milestone 7 checklist:
 - [x] Android widget (`PaymentsWidget.kt`, JNI `widget`): monthly cost, next charges, + opens Quick add; refreshed on every arm and after background sync
 - [ ] Check on a phone: the widget (Kotlin only compiles in CI)
 
-**Next:** milestone 8 — later: shared/split cost, budget cap, CSV/Wallos import, trial countdown with cancel link. Also open from earlier milestones: managing templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
+Milestone 8 so far:
+
+- [x] Trial countdown (Nov 1, 2026): "Free trials" on Upcoming (soonest first), a trial card in Detail (days left, what follows, Cancel at <site>); 15 templates carry their cancel page; links open in the browser (`open_url`: `xdg-open` / `explorer` on desktop, an intent on Android; before, Detail's link did nothing)
+
+**Next:** milestone 8 — later: shared/split cost, budget cap, CSV/Wallos import. Also open from earlier milestones: managing templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
 
 ### Backlog (Befikr features not copied yet)
 

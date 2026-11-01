@@ -21,6 +21,7 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import org.json.JSONArray
 
+/** A URL (update download, a page to open). */
 @InvokeArg
 class InstallUpdateArgs {
     lateinit var url: String
@@ -124,6 +125,19 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     fun moveToBack(invoke: Invoke) {
         activity.moveTaskToBack(true)
         invoke.resolve()
+    }
+
+    /** A web page (a payment's site or cancel page) in the browser. */
+    @Command
+    fun openUrl(invoke: Invoke) {
+        val url = invoke.parseArgs(InstallUpdateArgs::class.java).url
+        if (!url.startsWith("https://") && !url.startsWith("http://")) return invoke.reject("not a web link")
+        try {
+            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            invoke.resolve()
+        } catch (e: Exception) {
+            invoke.reject(e.message ?: "no browser")
+        }
     }
 
     @Command

@@ -17,6 +17,8 @@ export type Template = {
   estimated?: boolean
   /** Extra words that should find it ("tv", "music"). */
   tags?: string
+  /** Where to cancel (or manage) it; becomes the payment's link. */
+  cancelUrl?: string
 }
 
 const sub = (key: string, name: string, icon: string, color: string, extra: Partial<Template> = {}): Template => ({
@@ -38,13 +40,16 @@ const bill = (key: string, name: string, icon: string, color: string, extra: Par
 
 export const TEMPLATES: Template[] = [
   // Streaming, music, books
-  sub('netflix', 'Netflix', 'si:netflix', '#E50914', { tags: 'tv streaming' }),
-  sub('spotify', 'Spotify', 'si:spotify', '#1ED760', { tags: 'music' }),
-  sub('youtube-premium', 'YouTube Premium', 'si:youtube', '#FF0000', { tags: 'tv music' }),
-  sub('disney-plus', 'Disney+', 'lu:Film', '#113CCF', { tags: 'tv streaming' }),
+  sub('netflix', 'Netflix', 'si:netflix', '#E50914', { cancelUrl: 'https://www.netflix.com/cancelplan', tags: 'tv streaming' }),
+  sub('spotify', 'Spotify', 'si:spotify', '#1ED760', { cancelUrl: 'https://www.spotify.com/account/subscription/', tags: 'music' }),
+  sub('youtube-premium', 'YouTube Premium', 'si:youtube', '#FF0000', {
+    cancelUrl: 'https://www.youtube.com/paid_memberships',
+    tags: 'tv music',
+  }),
+  sub('disney-plus', 'Disney+', 'lu:Film', '#113CCF', { cancelUrl: 'https://www.disneyplus.com/account', tags: 'tv streaming' }),
   sub('prime', 'Amazon Prime', 'lu:Package', '#00A8E1', { tags: 'tv streaming video', unit: 'year' }),
-  sub('apple-tv', 'Apple TV+', 'si:appletv', '#000000', { tags: 'tv streaming' }),
-  sub('apple-music', 'Apple Music', 'si:applemusic', '#FA243C', { tags: 'music' }),
+  sub('apple-tv', 'Apple TV+', 'si:appletv', '#000000', { cancelUrl: 'https://support.apple.com/en-us/118428', tags: 'tv streaming' }),
+  sub('apple-music', 'Apple Music', 'si:applemusic', '#FA243C', { cancelUrl: 'https://support.apple.com/en-us/118428', tags: 'music' }),
   sub('paramount-plus', 'Paramount+', 'si:paramountplus', '#0064FF', { tags: 'tv streaming' }),
   sub('max', 'HBO Max', 'si:max', '#002BE7', { tags: 'tv streaming' }),
   sub('dazn', 'DAZN', 'si:dazn', '#F8F8F5', { tags: 'sport tv' }),
@@ -54,9 +59,15 @@ export const TEMPLATES: Template[] = [
   sub('deezer', 'Deezer', 'si:deezer', '#A238FF', { tags: 'music' }),
   sub('tidal', 'Tidal', 'si:tidal', '#000000', { tags: 'music' }),
   sub('audible', 'Audible', 'si:audible', '#F8991C', { tags: 'books audiobooks' }),
-  sub('youtube-music', 'YouTube Music', 'si:youtubemusic', '#FF0000', { tags: 'music' }),
-  sub('youtube-tv', 'YouTube TV', 'si:youtubetv', '#FF0000', { tags: 'tv live streaming' }),
-  sub('hulu', 'Hulu', 'lu:Tv', '#1CE783', { tags: 'tv streaming' }),
+  sub('youtube-music', 'YouTube Music', 'si:youtubemusic', '#FF0000', {
+    cancelUrl: 'https://www.youtube.com/paid_memberships',
+    tags: 'music',
+  }),
+  sub('youtube-tv', 'YouTube TV', 'si:youtubetv', '#FF0000', {
+    cancelUrl: 'https://tv.youtube.com/settings/membership',
+    tags: 'tv live streaming',
+  }),
+  sub('hulu', 'Hulu', 'lu:Tv', '#1CE783', { cancelUrl: 'https://secure.hulu.com/account', tags: 'tv streaming' }),
   sub('peacock', 'Peacock', 'lu:Tv', '#000000', { tags: 'tv streaming nbc' }),
   sub('fubo', 'Fubo', 'si:fubo', '#C83D1E', { tags: 'tv sport live' }),
   sub('siriusxm', 'SiriusXM', 'lu:Radio', '#0000EB', { tags: 'radio music' }),
@@ -67,14 +78,14 @@ export const TEMPLATES: Template[] = [
   sub('medium', 'Medium', 'si:medium', '#000000', { tags: 'reading blog' }),
   sub('substack', 'Substack', 'si:substack', '#FF6719', { tags: 'newsletter reading' }),
   // Cloud and storage
-  sub('icloud', 'iCloud+', 'si:icloud', '#3693F3', { tags: 'storage apple' }),
+  sub('icloud', 'iCloud+', 'si:icloud', '#3693F3', { cancelUrl: 'https://support.apple.com/en-us/118428', tags: 'storage apple' }),
   sub('google-one', 'Google One', 'si:google', '#4285F4', { tags: 'storage drive' }),
-  sub('proton', 'Proton', 'si:proton', '#6D4AFF', { tags: 'mail vpn drive pass' }),
-  sub('dropbox', 'Dropbox', 'si:dropbox', '#0061FF', { tags: 'storage' }),
+  sub('proton', 'Proton', 'si:proton', '#6D4AFF', { cancelUrl: 'https://account.proton.me/dashboard', tags: 'mail vpn drive pass' }),
+  sub('dropbox', 'Dropbox', 'si:dropbox', '#0061FF', { cancelUrl: 'https://www.dropbox.com/account/plan', tags: 'storage' }),
   sub('backblaze', 'Backblaze', 'si:backblaze', '#E21E29', { tags: 'backup storage' }),
   sub('hetzner', 'Hetzner', 'si:hetzner', '#D50C2D', { tags: 'server hosting' }),
   // Tools, AI, development
-  sub('claude', 'Claude', 'si:claude', '#D97757', { tags: 'ai anthropic' }),
+  sub('claude', 'Claude', 'si:claude', '#D97757', { cancelUrl: 'https://claude.ai/settings/billing', tags: 'ai anthropic' }),
   sub('chatgpt', 'ChatGPT', 'lu:Bot', '#10A37F', { tags: 'ai openai' }),
   sub('gemini', 'Google Gemini', 'si:googlegemini', '#8E75B2', { tags: 'ai google' }),
   sub('microsoft-365', 'Microsoft 365', 'lu:Briefcase', '#D83B01', { tags: 'office word excel onedrive', unit: 'year' }),
@@ -86,7 +97,7 @@ export const TEMPLATES: Template[] = [
   sub('todoist', 'Todoist', 'si:todoist', '#E44332', { tags: 'tasks todo' }),
   sub('discord', 'Discord Nitro', 'si:discord', '#5865F2', { tags: 'chat games' }),
   sub('cursor', 'Cursor', 'si:cursor', '#000000', { tags: 'ai code' }),
-  sub('github', 'GitHub', 'si:github', '#181717', { tags: 'code copilot' }),
+  sub('github', 'GitHub', 'si:github', '#181717', { cancelUrl: 'https://github.com/settings/billing', tags: 'code copilot' }),
   sub('jetbrains', 'JetBrains', 'si:jetbrains', '#000000', { tags: 'code ide', unit: 'year' }),
   sub('notion', 'Notion', 'si:notion', '#000000', { tags: 'notes' }),
   sub('obsidian', 'Obsidian Sync', 'si:obsidian', '#7C3AED', { tags: 'notes' }),
@@ -106,7 +117,10 @@ export const TEMPLATES: Template[] = [
   sub('fitbit', 'Fitbit Premium', 'si:fitbit', '#00B0B9', { tags: 'fitness health' }),
   sub('headspace', 'Headspace', 'si:headspace', '#F47D31', { tags: 'meditation sleep' }),
   sub('duolingo', 'Duolingo', 'si:duolingo', '#58CC02', { tags: 'language learning', unit: 'year' }),
-  sub('patreon', 'Patreon', 'si:patreon', '#000000', { tags: 'creator support' }),
+  sub('patreon', 'Patreon', 'si:patreon', '#000000', {
+    cancelUrl: 'https://www.patreon.com/settings/memberships',
+    tags: 'creator support',
+  }),
   sub('gym', 'Gym', 'lu:Dumbbell', '#3F9A6E', { tags: 'fitness studio' }),
   // Shopping, food, transport
   sub('hellofresh', 'HelloFresh', 'si:hellofresh', '#99CC33', { tags: 'food meal kit', unit: 'week' }),
