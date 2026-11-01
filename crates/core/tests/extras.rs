@@ -69,10 +69,11 @@ fn history_total_spent_month_and_stats_count_them() {
     assert_eq!(dt.coming.iter().map(|h| h.charge.amount_minor).collect::<Vec<_>>(), [1000, 500]);
 
     assert_eq!(s.month_charges(d("2026-03-01"), d("2026-02-15")).unwrap().total, 1500);
+    // Paid only: the March one-time charge isn't in Stats yet.
     let st = s.stats(d("2026-02-15"), 0).unwrap();
     let months: Vec<_> = st.months.iter().map(|m| (m.month.as_str(), m.total)).collect();
-    assert_eq!(months, [("2026-01", 3000), ("2026-02", 1000), ("2026-03", 1500)]);
-    assert_eq!(st.yearly, 12_000);
+    assert_eq!(months, [("2026-01", 3000), ("2026-02", 1000)]);
+    assert_eq!(st.total, 4000);
 }
 
 #[test]

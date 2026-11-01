@@ -24,16 +24,18 @@ fn months_follow_past_prices_and_splits() {
     add(&mut s, "B", monthly(500), "2026-02-01", None);
 
     let st = s.stats(d("2026-03-20"), 0).unwrap();
-    let months: Vec<_> = st.months.iter().map(|m| (m.month.as_str(), m.total, m.forecast)).collect();
-    assert_eq!(
-        months,
-        [("2026-01", 1000, false), ("2026-02", 1500, false), ("2026-03", 2000, true), ("2026-04", 2000, true)]
-    );
+    // Paid only: up to today (Mar 20), nothing coming.
+    let months: Vec<_> = st.months.iter().map(|m| (m.month.as_str(), m.total)).collect();
+    assert_eq!(months, [("2026-01", 1000), ("2026-02", 1500), ("2026-03", 2000)]);
     assert_eq!(st.months[2].by_category, [Slice { key: Some(cat.clone()), amount: 1500 }, Slice { key: None, amount: 500 }]);
-    assert_eq!(st.yearly, 2000 * 12);
-    assert_eq!(st.by_category[0], Slice { key: Some(cat), amount: 1500 * 12 });
-    assert_eq!(st.by_currency, [Slice { key: Some("EUR".into()), amount: 2000 * 12 }]);
+    assert_eq!((st.total, st.this_month, st.this_year), (4500, 2000, 4500));
+    assert_eq!(st.by_category, [Slice { key: Some(cat), amount: 1000 + 1000 + 1500 }, Slice { key: None, amount: 1000 }]);
+    assert_eq!(st.by_currency, [Slice { key: Some("EUR".into()), amount: 4500 }]);
     assert_eq!(st.from, Some(d("2026-01-10")));
+
+    // Mar 5: only B (Mar 1) is paid this month so far, not A (Mar 10).
+    let early = s.stats(d("2026-03-05"), 0).unwrap();
+    assert_eq!((early.this_month, early.months.last().map(|m| m.total)), (500, Some(500)));
 
     // At most 2 months back.
     let st = s.stats(d("2026-03-20"), 2).unwrap();
@@ -52,5 +54,6 @@ fn saved_counts_pauses_and_cancelling_until_today() {
 
     let st = s.stats(d("2026-04-20"), 0).unwrap();
     assert_eq!(st.saved, 2 * 3000 + 3 * 1000);
-    assert_eq!(st.yearly, 3000 * 12, "only the gym runs");
+    // Paid: gym Jan + Apr, Netflix Jan.
+    assert_eq!(st.total, 3000 + 3000 + 1000);
 }

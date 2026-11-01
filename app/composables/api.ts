@@ -177,11 +177,14 @@ export type BackupStatus = { folder: string | null; lastAt: number | null; lastE
 
 export type MonthCharges = { charges: UpcomingCharge[]; total: number; excludedCurrencies: string[] }
 export type Slice = { key: string | null; amount: number }
-export type MonthSpend = { month: string; total: number; byCategory: Slice[]; forecast: boolean }
+export type MonthSpend = { month: string; total: number; byCategory: Slice[] }
 export type Stats = {
   mainCurrency: string
   months: MonthSpend[]
-  yearly: number
+  /** Paid in the months above; this month and this year so far. */
+  total: number
+  thisMonth: number
+  thisYear: number
   byCategory: Slice[]
   byMethod: Slice[]
   byCurrency: Slice[]

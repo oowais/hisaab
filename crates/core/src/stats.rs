@@ -1,8 +1,8 @@
-//! Stats: what was spent month by month (from the charges the periods give,
-//! so past prices stay right), what the running payments cost a year split
-//! by category, payment method and currency, and what pausing and
-//! cancelling saved. All in the main currency; charges at their day's rate.
-//! Shared payments count your part.
+//! Stats: only what was paid, charges due up to today (from the periods,
+//! so past prices stay right, plus one-time charges): month by month, this
+//! month, this year and in the range, split by category, payment method and
+//! currency; and what pausing and cancelling saved. All in the main
+//! currency; charges at their day's rate. Shared payments count your part.
 
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::dates::{add_months_clamped, prev_day};
 use crate::occurrence::{occurrences, scheduled, with_extras};
 use crate::store::Store;
-use crate::{Charge, ChargeStatus, Period, Result, SubscriptionStatus};
+use crate::{Charge, ChargeStatus, Period, Result};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,8 +20,6 @@ pub struct MonthSpend {
     pub total: i64,
     /// Per category id (None = no category), largest first.
     pub by_category: Vec<Slice>,
-    /// The month is still to come (or still running): charges not all paid.
-    pub forecast: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -36,11 +34,14 @@ pub struct Slice {
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
     pub main_currency: String,
-    /// From the first month with a charge (at most `months` back) to the
-    /// end of next month.
+    /// From the first month with a charge (at most `months` back) to this
+    /// month (paid so far).
     pub months: Vec<MonthSpend>,
-    /// The running payments' cost per year, and its splits (largest first).
-    pub yearly: i64,
+    /// Paid in all the months above, and its splits (largest first).
+    pub total: i64,
+    /// Paid this month and this calendar year so far.
+    pub this_month: i64,
+    pub this_year: i64,
     pub by_category: Vec<Slice>,
     pub by_method: Vec<Slice>,
     pub by_currency: Vec<Slice>,
@@ -106,7 +107,8 @@ impl Store {
         let main = self.main_currency()?;
         let subs = self.subscriptions()?;
         let this_month = today.with_day(1).unwrap_or(today);
-        let end = add_months_clamped(this_month, 2).map(prev_day).unwrap_or(today);
+        // Paid only: nothing after today.
+        let end = today;
         // A one-time charge may come before the first period.
         let first = subs
             .iter()
@@ -118,6 +120,7 @@ impl Store {
             add_months_clamped(this_month, -(i64::from(months) - 1)).map(|m| first.map_or(m, |f| f.max(m)))
         };
         let mut excluded: Vec<String> = Vec::new();
+        let (mut total, mut by_category, mut by_method, mut by_currency) = (0, Vec::new(), Vec::new(), Vec::new());
         let mut month_list: Vec<MonthSpend> = Vec::new();
         if let Some(start) = earliest.map(|d| d.with_day(1).unwrap_or(d)) {
             let mut m = start;
@@ -126,7 +129,6 @@ impl Store {
                     month: month_key(m),
                     total: 0,
                     by_category: Vec::new(),
-                    forecast: m >= this_month,
                 });
                 m = match add_months_clamped(m, 1) {
                     Some(n) => n,
@@ -146,6 +148,10 @@ impl Store {
                     if let Some(ms) = month_list.iter_mut().find(|ms| ms.month == month_key(c.due_date)) {
                         ms.total += v;
                         add(&mut ms.by_category, s.subscription.category_id.clone(), v);
+                        total += v;
+                        add(&mut by_category, s.subscription.category_id.clone(), v);
+                        add(&mut by_method, s.subscription.payment_method_id.clone(), v);
+                        add(&mut by_currency, Some(c.settled_currency.clone().unwrap_or_else(|| c.currency.clone())), v);
                     }
                 }
             }
@@ -154,24 +160,10 @@ impl Store {
             }
         }
 
-        // Running payments, per year.
-        let (mut yearly, mut by_category, mut by_method, mut by_currency) = (0, Vec::new(), Vec::new(), Vec::new());
+        let this_month_total = month_list.iter().find(|m| m.month == month_key(today)).map_or(0, |m| m.total);
+        let year = format!("{:04}-", today.year());
+        let this_year = month_list.iter().filter(|m| m.month.starts_with(&year)).map(|m| m.total).sum();
         let mut saved = 0;
-        for s in subs.iter().filter(|s| s.subscription.archived_at.is_none()) {
-            let v = self.view(s, today, &main)?;
-            let running = matches!(v.status, SubscriptionStatus::Active | SubscriptionStatus::Trial);
-            if let Some(p) = v.current.as_ref().filter(|p| running && p.charges()) {
-                match v.yearly_in_main {
-                    Some(y) => {
-                        yearly += y;
-                        add(&mut by_category, s.subscription.category_id.clone(), y);
-                        add(&mut by_method, s.subscription.payment_method_id.clone(), y);
-                        add(&mut by_currency, Some(p.terms.currency.clone()), y);
-                    }
-                    None => excluded.push(p.terms.currency.clone()),
-                }
-            }
-        }
         // Saved: every stretch after a charging period without charges (a
         // pause, a gap, the time since cancelling), up to today.
         for s in &subs {
@@ -193,7 +185,9 @@ impl Store {
         Ok(Stats {
             main_currency: main,
             months: month_list,
-            yearly,
+            total,
+            this_month: this_month_total,
+            this_year,
             by_category: sorted(by_category),
             by_method: sorted(by_method),
             by_currency: sorted(by_currency),

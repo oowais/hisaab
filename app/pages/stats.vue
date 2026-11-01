@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Stats: spend per month (stacked by category, from the periods so past
-// prices stay right; this month and next are a forecast), what the running
-// payments cost split by category, payment method and currency, and what
-// pausing and cancelling saved. Hand-built SVG, like the Timeline.
+// Stats: only what was paid (charges up to today): per month (stacked by
+// category, from the periods so past prices stay right), this month, this
+// year and in the range, split by category, payment method and currency;
+// and what pausing and cancelling saved. Hand-built SVG, like the Timeline.
 import { ChartColumn, PiggyBank } from 'lucide-vue-next'
 import type { Category, PaymentMethod, Slice, Stats } from '~/composables/api'
 
@@ -37,7 +37,7 @@ watch(range, () => {
 
 const main = computed(() => st.value?.mainCurrency ?? 'EUR')
 const money = (minor: number) => formatMoney(minor, main.value, { compact: true })
-const empty = computed(() => st.value && !st.value.months.some((m) => m.total) && !st.value.yearly)
+const empty = computed(() => st.value && !st.value.total && !st.value.saved)
 
 // ---- Colours: a category's own, else a palette swatch by its order.
 const catById = computed(() => new Map(categories.value.map((c) => [c.id, c])))
@@ -79,24 +79,25 @@ function monthInitial(month: string) {
 }
 const monthName = (month: string) => new Date(`${month}-01T00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 const pickedMonth = computed(() => st.value?.months.find((m) => m.month === picked.value) ?? null)
-// The newest month that's done: shown when nothing is picked.
-const shownMonth = computed(() => pickedMonth.value ?? [...(st.value?.months ?? [])].reverse().find((m) => !m.forecast) ?? null)
-// Finished months that went over the budget.
-const doneMonths = computed(() => (st.value?.months ?? []).filter((m) => !m.forecast).length)
+// This month (so far) when nothing is picked.
+const shownMonth = computed(() => pickedMonth.value ?? st.value?.months.at(-1) ?? null)
+const thisMonthKey = today.slice(0, 7)
+// Finished months (not this one) that went over the budget.
+const doneMonths = computed(() => (st.value?.months ?? []).filter((m) => m.month !== thisMonthKey).length)
 const overMonths = computed(() => {
   const b = st.value?.monthlyBudget
-  return b ? (st.value?.months ?? []).filter((m) => !m.forecast && m.total > b).length : 0
+  return b ? (st.value?.months ?? []).filter((m) => m.month !== thisMonthKey && m.total > b).length : 0
 })
 const scroller = ref<HTMLElement>()
 watch(chart, () => nextTick(() => scroller.value && (scroller.value.scrollLeft = scroller.value.scrollWidth)))
 
-// ---- Splits of the yearly cost
+// ---- Splits of what was paid in the range
 type Split = { title: string; rows: (Slice & { name: string; color: string; share: number })[] }
 const splits = computed<Split[]>(() => {
   const s = st.value
-  if (!s?.yearly) return []
+  if (!s?.total) return []
   const rows = (slices: Slice[], name: (k: string | null) => string, color: (k: string | null) => string) =>
-    slices.map((x) => ({ ...x, name: name(x.key), color: color(x.key), share: x.amount / s.yearly }))
+    slices.map((x) => ({ ...x, name: name(x.key), color: color(x.key), share: x.amount / s.total }))
   const out: Split[] = [{ title: 'By category', rows: rows(s.byCategory, catName, colorOf) }]
   if (s.byMethod.some((x) => x.key)) out.push({ title: 'By payment method', rows: rows(s.byMethod, methodName, () => 'var(--text)') })
   if (s.byCurrency.length > 1) out.push({ title: 'By currency', rows: rows(s.byCurrency, currencyName, () => 'var(--text)') })
@@ -114,22 +115,22 @@ const splits = computed<Split[]>(() => {
     <template v-if="st && !empty">
       <div class="totals">
         <div class="total">
-          <span class="amount">{{ money(Math.round(st.yearly / 12)) }}</span>
-          <span class="muted small">a month now</span>
+          <span class="amount">{{ money(st.thisMonth) }}</span>
+          <span class="muted small">paid this month</span>
         </div>
         <div class="total">
-          <span class="amount">{{ formatMoney(Math.round(st.yearly / 365), main) }}</span>
-          <span class="muted small">a day</span>
+          <span class="amount">{{ money(st.thisYear) }}</span>
+          <span class="muted small">paid in {{ today.slice(0, 4) }}</span>
         </div>
         <div class="total">
-          <span class="amount">{{ money(st.yearly) }}</span>
-          <span class="muted small">a year</span>
+          <span class="amount">{{ money(st.total) }}</span>
+          <span class="muted small">{{ range ? 'last 12 months' : 'in total' }}</span>
         </div>
       </div>
       <p v-if="st.excludedCurrencies.length" class="muted small note">{{ st.excludedCurrencies.join(', ') }} left out (no exchange rate)</p>
 
       <div class="head-row">
-        <h2 class="section-title">Spent per month</h2>
+        <h2 class="section-title">Paid per month</h2>
         <div class="chips" role="radiogroup" aria-label="Range">
           <button
             v-for="r in [12, 0] as const"
@@ -147,15 +148,15 @@ const splits = computed<Split[]>(() => {
       <section class="pane chart-pane">
         <div v-if="shownMonth" class="month-line">
           <b>{{ money(shownMonth.total) }}</b>
-          <span class="muted small">{{ monthName(shownMonth.month) }}{{ shownMonth.forecast ? ' · expected' : '' }}</span>
+          <span class="muted small">{{ monthName(shownMonth.month) }}{{ shownMonth.month === thisMonthKey ? ' · so far' : '' }}</span>
         </div>
         <div ref="scroller" class="scroller">
-          <svg :width="chart.width" :height="H + 34" :viewBox="`0 0 ${chart.width} ${H + 34}`" role="img" aria-label="Spend per month">
+          <svg :width="chart.width" :height="H + 34" :viewBox="`0 0 ${chart.width} ${H + 34}`" role="img" aria-label="Paid per month">
             <g
               v-for="b in chart.bars"
               :key="b.month"
               class="bar"
-              :class="{ forecast: b.forecast, dim: picked && picked !== b.month }"
+              :class="{ dim: picked && picked !== b.month }"
               @click="picked = picked === b.month ? null : b.month"
             >
               <rect :x="b.x - GAP / 2" y="0" :width="BAR + GAP" :height="H + 34" fill="transparent" />
@@ -197,7 +198,9 @@ const splits = computed<Split[]>(() => {
       </section>
 
       <template v-for="sp in splits" :key="sp.title">
-        <h2 class="section-title">{{ sp.title }} <span class="muted small">· a year</span></h2>
+        <h2 class="section-title">
+          {{ sp.title }} <span class="muted small">· {{ range ? 'last 12 months' : 'all time' }}</span>
+        </h2>
         <ul class="pane rows split">
           <li v-for="r in sp.rows" :key="r.key ?? 'none'">
             <span class="split-row">
@@ -214,7 +217,7 @@ const splits = computed<Split[]>(() => {
     <div v-else-if="st" class="empty">
       <ChartColumn :size="40" class="muted" />
       <p>Nothing to count yet</p>
-      <p class="muted small">Add payments; what they cost shows up here.</p>
+      <p class="muted small">Once a payment is charged, what you paid shows up here.</p>
     </div>
   </main>
 </template>
@@ -279,9 +282,6 @@ const splits = computed<Split[]>(() => {
 .bar {
   cursor: pointer;
   transition: opacity 0.15s;
-}
-.bar.forecast rect:not([fill='transparent']) {
-  opacity: 0.4;
 }
 .bar.dim {
   opacity: 0.35;
