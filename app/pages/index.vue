@@ -4,7 +4,6 @@
 import {
   Archive,
   CalendarClock,
-  CalendarDays,
   ChevronDown,
   ChevronUp,
   CirclePause,
@@ -13,13 +12,11 @@ import {
   Pencil,
   Plus,
   Search,
-  Settings,
   TriangleAlert,
 } from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
 import type { Shared } from '~/utils/share'
 
-const update = useUpdate()
 const router = useRouter()
 const { data, error, today } = useOverview()
 const toast = useToast()
@@ -114,8 +111,20 @@ const trials = computed(() =>
 )
 const paused = computed(() => subs.value.filter((s) => s.status === 'paused' && shown(s)))
 const showPaused = ref(false)
-const endedCount = computed(() => subs.value.filter((s) => s.status === 'ended').length)
-const empty = computed(() => data.value && !subs.value.some((s) => s.status !== 'ended'))
+// Ended and archived: still listed, at the bottom and grayed out.
+const archived = ref<SubscriptionView[]>([])
+const loadArchived = () =>
+  api
+    .archived(today.value)
+    .then((a) => (archived.value = a))
+    .catch(() => {})
+watch(dataVersion, loadArchived)
+onMounted(loadArchived)
+const over = computed(() => [...subs.value.filter((s) => s.status === 'ended'), ...archived.value].filter(shown))
+/** "Ended 3 Mar 2025", "Archived". */
+const overText = (s: SubscriptionView) =>
+  s.archivedAt ? 'Archived' : s.current?.endDate ? `Ended ${shortDay(s.current.endDate, today.value)}` : 'Ended'
+const empty = computed(() => data.value && !subs.value.length && !archived.value.length)
 
 // ---- Row actions
 const moving = ref<UpcomingCharge | null>(null)
@@ -160,10 +169,6 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
         <SyncDot />
         <button v-if="wide && !empty" class="icon-btn" aria-label="Add a payment" @click="adding = true"><Plus :size="22" /></button>
         <NuxtLink v-if="!empty" to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
-        <NuxtLink to="/calendar" class="icon-btn cal" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
-        <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
-          <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
-        </NuxtLink>
       </header>
       <SyncStaleHint />
 
@@ -251,9 +256,23 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
             </li>
           </ul>
         </template>
-        <NuxtLink v-if="endedCount" to="/archive" class="archive-link muted small">
-          <Archive :size="15" /> {{ endedCount }} ended
-        </NuxtLink>
+        <template v-if="over.length">
+          <h2 class="section-title over-title">
+            <span class="flex">Ended and archived</span>
+            <NuxtLink to="/archive" class="muted small manage" aria-label="Manage ended and archived"
+              ><Archive :size="15" /> Manage</NuxtLink
+            >
+          </h2>
+          <ul class="pane rows list over">
+            <li v-for="s in over" :key="s.id">
+              <button class="sub-row" :class="{ selected: wide && s.id === selected }" @click="open(s.id)">
+                <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
+                <span class="flex">{{ s.name }}</span>
+                <span class="muted small">{{ overText(s) }}</span>
+              </button>
+            </li>
+          </ul>
+        </template>
       </template>
 
       <div v-else-if="data" class="empty">
@@ -294,19 +313,6 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 </template>
 
 <style scoped>
-.gear {
-  position: relative;
-}
-.update-dot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 2px var(--bg);
-}
 .total {
   display: block;
   text-align: left;
@@ -338,14 +344,22 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 .list > li {
   list-style: none;
 }
-.archive-link {
+.over-title {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 20px auto 0;
-  color: var(--muted);
+  margin-top: 24px;
+}
+.manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 400;
   text-decoration: none;
+}
+/* Over: still there, grayed out. */
+.over .sub-row {
+  opacity: 0.5;
+  filter: grayscale(1);
 }
 .quiet {
   margin-top: 24px;

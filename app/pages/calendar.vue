@@ -85,7 +85,7 @@ const open = (id: string) => router.push(`/sub/${id}`)
 </script>
 
 <template>
-  <Screen :title="title">
+  <Screen :title="title" tab>
     <template #actions>
       <button class="icon-btn" aria-label="Previous month" @click="shift(-1)"><ChevronLeft :size="22" /></button>
       <button class="icon-btn" aria-label="Next month" @click="shift(1)"><ChevronRight :size="22" /></button>

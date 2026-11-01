@@ -2,20 +2,21 @@
 // Shared page frame: back button, title and optional #actions pinned at the
 // top, the page's content scrolling below. Built like the home screen
 // (index.vue): fixed between the status and gesture bars, so only the body
-// ever scrolls.
+// ever scrolls. `tab`: a main screen (Calendar, Settings), no back button and
+// room for the tab bar.
 import { ArrowLeft } from 'lucide-vue-next'
-defineProps<{ title: string }>()
+defineProps<{ title: string; tab?: boolean }>()
 const router = useRouter()
 </script>
 
 <template>
   <main class="page screen">
     <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
+      <button v-if="!tab" class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <h1>{{ title }}</h1>
       <slot name="actions" />
     </header>
-    <div class="body"><slot /></div>
+    <div class="body" :class="{ tab }"><slot /></div>
   </main>
 </template>
 
@@ -41,5 +42,8 @@ const router = useRouter()
   overscroll-behavior: contain;
   margin: 0 -16px;
   padding: 0 16px 48px;
+}
+.body.tab {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom));
 }
 </style>
