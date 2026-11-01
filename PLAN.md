@@ -303,6 +303,7 @@ Milestone 8 so far:
 - [x] Stats paid-only (Nov 1, 2026): only charges due up to today: paid per month (this month "so far", no forecast bars), paid this month / this year / in the range, and the splits by category, payment method and currency of what was paid in the range (were the running payments' yearly cost, e.g. €61 × 12). The monthly and yearly cost stays on Home
 - [x] Change billing day (Nov 1, 2026): Detail action for running payments; pick the next charge's day (today or later); later charges follow it, earlier ones stay (core `change_billing_day`: split at tomorrow, new anchor; scheduled price changes on the old day follow; refused while paused or in a free trial)
 - [x] "Amount varies" removed (Nov 1, 2026): every charge is the amount entered (change it with Change price, a single charge in its sheet, one-time charges for extras). No estimates, averaging, "~" or "about" anywhere; `amount_kind` stays in the schema for old rows and peers, never read
+- [x] Fix a period's dates (Nov 1, 2026): tap a row in Detail's Periods: "Started on" (first period or after a break; the billing day moves with it when it began there) and "Ended on" (a cancellation or the end before a break; the latest can go back to "Still running"); sides joined to a neighbour stay fixed (core `set_period_dates`). Restart stays its own action
 
 - [ ] CSV/Wallos import: skipped for now (Nov 1, 2026), by choice
 

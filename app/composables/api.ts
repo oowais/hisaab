@@ -228,6 +228,8 @@ export const api = {
   addSubscription: (n: NewSubscription) => invoke<string>('add_subscription', { new: n }),
   updateSubscription: (id: string, fields: SubscriptionFields) => invoke<void>('update_subscription', { id, fields }),
   changeTerms: (id: string, from: string, terms: Terms) => invoke<void>('change_terms', { id, from, terms }),
+  setPeriodDates: (id: string, periodId: string, start: string, end: string | null) =>
+    invoke<void>('set_period_dates', { id, periodId, start, end }),
   changeBillingDay: (id: string, next: string, today: string) => invoke<void>('change_billing_day', { id, next, today }),
   pause: (id: string, from: string, resumeOn: string | null) => invoke<void>('pause', { id, from, resumeOn }),
   resume: (id: string, on: string, anchor: string | null = null) => invoke<void>('resume', { id, on, anchor }),

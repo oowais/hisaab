@@ -4,7 +4,7 @@
 // phone (pages/sub/[id].vue), the right-hand pane beside Upcoming on a wide
 // window (`embedded`).
 import { Archive, ArchiveRestore, ChevronDown, ChevronUp, ExternalLink, MoreVertical, Pencil, Plus, Trash2, Undo2 } from 'lucide-vue-next'
-import type { Action, Detail, ExtraCharge, HistoryCharge } from '~/composables/api'
+import type { Action, Detail, ExtraCharge, HistoryCharge, Period } from '~/composables/api'
 import DetailPane from '~/components/DetailPane.vue'
 import Screen from '~/components/Screen.vue'
 
@@ -246,6 +246,9 @@ function toggleYear(year: string) {
 const dayMonth = (d: string) => parseDay(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 const weekday = (d: string) => parseDay(d).toLocaleDateString(undefined, { weekday: 'short' })
 
+// ---- A period's dates (the real start, the real cancellation): its sheet.
+const editingPeriod = ref<Period | null>(null)
+
 // ---- Coming: only what differs from the usual (one-time, moved, changed);
 // the next charge is in the card at the top (tap it to change it).
 const special = computed(() => sub.value?.coming.filter((c) => c.extraId || c.isOverride) ?? [])
@@ -359,8 +362,10 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
           class="item"
           :class="{ future: p.future, focus: p.id === focusPeriod }"
         >
-          <span class="flex">{{ p.label }}</span>
-          <span class="muted small">{{ p.range }}</span>
+          <button class="period" :aria-label="`Dates of ${p.label}`" @click="editingPeriod = p">
+            <span class="flex">{{ p.label }}</span>
+            <span class="muted small">{{ p.range }}</span>
+          </button>
         </li>
       </ul>
       <button type="button" class="link small add-extra" @click="addingExtra = true"><Plus :size="14" /> One-time charge</button>
@@ -435,6 +440,13 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
       :extra="editingExtra"
       @close="((addingExtra = false), (editingExtra = null))"
     />
+    <PeriodSheet
+      v-if="editingPeriod && sub"
+      :sub="sub"
+      :period="editingPeriod"
+      @close="editingPeriod = null"
+      @done="(m) => ((editingPeriod = null), done(m))"
+    />
     <ActionSheet v-if="acting && sub" :action="acting" :sub="sub" @close="acting = null" @done="done" />
     <SnoozeSheet
       v-if="snoozing && sub"
@@ -477,6 +489,14 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 }
 .price {
   font-size: 1.25rem;
+}
+.period {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: inherit;
+  text-align: left;
 }
 .year-head {
   display: flex;

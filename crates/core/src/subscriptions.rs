@@ -697,6 +697,41 @@ impl Store {
         })
     }
 
+    /// Fix when a stretch started or ended (the real start, the real
+    /// cancellation). `start` only for a period that doesn't follow on from
+    /// the one before (the first, or one after a break); `end` only for one
+    /// the next doesn't follow on from (cancelled, or before a break); None
+    /// = still running (the latest only). A billing day that began with the
+    /// period moves with its start.
+    pub fn set_period_dates(
+        &mut self,
+        id: &str,
+        period_id: &str,
+        start: NaiveDate,
+        end: Option<NaiveDate>,
+    ) -> Result<SubscriptionDetail> {
+        self.edit_periods(id, |ps| {
+            let i = ps.iter().position(|p| p.id == period_id).ok_or_else(|| Error::NotFound(period_id.into()))?;
+            let follows = |a: &Period, b: &Period| a.end_date.and_then(|e| e.succ_opt()) == Some(b.start_date);
+            if start != ps[i].start_date {
+                if i > 0 && follows(&ps[i - 1], &ps[i]) {
+                    return Err(Error::Invalid("it starts where the period before ends".into()));
+                }
+                if ps[i].anchor_date == ps[i].start_date {
+                    ps[i].anchor_date = start;
+                }
+                ps[i].start_date = start;
+            }
+            if end != ps[i].end_date {
+                if ps.get(i + 1).is_some_and(|n| follows(&ps[i], n)) {
+                    return Err(Error::Invalid("it ends where the next period starts".into()));
+                }
+                ps[i].end_date = end;
+            }
+            Ok(())
+        })
+    }
+
     /// Charges from `next` on fall on its day (every `every_n unit` from it);
     /// earlier ones stay as they were. Later scheduled price changes that
     /// followed the old day follow the new one. `next`: today or later.

@@ -319,3 +319,41 @@ fn change_billing_day_checks() {
     s.change_billing_day(&id2, d("2026-01-20"), d("2026-01-20")).unwrap();
     assert_eq!(s.next_charge(&id2, d("2026-01-20")).unwrap().map(|c| c.due_date), Some(d("2026-01-20")));
 }
+
+#[test]
+fn fix_start_and_cancellation_dates_even_after_a_restart() {
+    let mut s = Store::open_in_memory().unwrap();
+    let sub = add(&mut s, "Gym", monthly(3000), "2026-01-15", None);
+    let id = sub.subscription.id;
+    let first = sub.periods[0].id.clone();
+    // Really started on the 10th: the billing day moves with it.
+    s.set_period_dates(&id, &first, d("2026-01-10"), None).unwrap();
+    assert_eq!(s.next_charge(&id, d("2026-01-11")).unwrap().map(|c| c.due_date), Some(d("2026-02-10")));
+    // Cancelled; later restarted after a break.
+    s.cancel(&id, d("2026-03-31")).unwrap();
+    s.restart(&id, d("2026-06-01"), None).unwrap();
+    // The cancellation was really end of April: one more charge (Apr 10).
+    s.set_period_dates(&id, &first, d("2026-01-10"), Some(d("2026-04-30"))).unwrap();
+    let cs = s.charges(d("2026-01-01"), d("2026-06-30"), d("2026-06-30")).unwrap();
+    let days: Vec<_> = cs.iter().map(|c| c.due_date.to_string()).collect();
+    assert_eq!(days, ["2026-01-10", "2026-02-10", "2026-03-10", "2026-04-10", "2026-06-01"]);
+    // Overlapping the restart, or running on while a later one exists: refused.
+    assert!(s.set_period_dates(&id, &first, d("2026-01-10"), Some(d("2026-06-15"))).is_err());
+    assert!(s.set_period_dates(&id, &first, d("2026-01-10"), None).is_err());
+}
+
+#[test]
+fn reopen_a_cancelled_one_and_joined_edges_stay() {
+    let mut s = Store::open_in_memory().unwrap();
+    let sub = add(&mut s, "Netflix", monthly(1000), "2026-01-15", None);
+    let id = sub.subscription.id;
+    s.change_terms(&id, d("2026-03-15"), &monthly(1300)).unwrap();
+    s.cancel(&id, d("2026-05-14")).unwrap();
+    let ps = s.subscription(&id).unwrap().periods;
+    // The price change follows on from the first period: its start stays put.
+    assert!(s.set_period_dates(&id, &ps[1].id, d("2026-03-20"), ps[1].end_date).is_err());
+    assert!(s.set_period_dates(&id, &ps[0].id, ps[0].start_date, Some(d("2026-03-20"))).is_err());
+    // Not cancelled after all: running again.
+    s.set_period_dates(&id, &ps[1].id, ps[1].start_date, None).unwrap();
+    assert_eq!(s.overview(d("2026-06-01")).unwrap().subscriptions[0].status, SubscriptionStatus::Active);
+}
