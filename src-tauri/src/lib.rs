@@ -245,6 +245,11 @@ fn delete_category(app: AppHandle, id: String) -> Res<Vec<String>> {
 }
 
 #[tauri::command]
+fn ensure_category(app: AppHandle, id: String, name: String, color: String) -> Res<Category> {
+    write(&app, |s| s.ensure_category(&id, &name, &color))
+}
+
+#[tauri::command]
 fn restore_category(app: AppHandle, id: String, subs: Vec<String>) -> Res<()> {
     write(&app, |s| s.restore_category(&id, &subs))
 }
@@ -608,6 +613,7 @@ pub fn run() {
             update_category,
             delete_category,
             restore_category,
+            ensure_category,
             sort_categories,
             rename_payment_method,
             delete_payment_method,

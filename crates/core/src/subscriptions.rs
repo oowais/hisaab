@@ -339,6 +339,35 @@ impl Store {
         })
     }
 
+    /// A pre-made category, picked for the first time (or again after it was
+    /// deleted). Its id is fixed in the app, so two devices that pick it end
+    /// up with one category after syncing. Kept as is when it exists.
+    pub fn ensure_category(&mut self, id: &str, name: &str, color: &str) -> Result<Category> {
+        if id.trim().is_empty() || name.trim().is_empty() {
+            return Err(Error::Invalid("id or name is empty".into()));
+        }
+        self.write(|c, now| {
+            let found: Option<(Option<i64>, String, String, i64)> = c
+                .query_row("SELECT deleted_at, name, color, sort FROM category WHERE id = ?1", [id], |r| {
+                    Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+                })
+                .optional()?;
+            let sort = match found {
+                Some((None, name, color, sort)) => return Ok(Category { id: id.into(), name, color, sort }),
+                Some((Some(_), name, color, sort)) => {
+                    c.execute("UPDATE category SET deleted_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
+                    return Ok(Category { id: id.into(), name, color, sort });
+                }
+                None => c.query_row("SELECT COALESCE(MAX(sort), -1) + 1 FROM category", [], |r| r.get(0))?,
+            };
+            c.execute(
+                "INSERT INTO category (id, name, color, sort, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+                params![id, name.trim(), color, sort, now],
+            )?;
+            Ok(Category { id: id.into(), name: name.trim().into(), color: color.into(), sort })
+        })
+    }
+
     pub fn categories(&self) -> Result<Vec<Category>> {
         let mut st = self
             .conn

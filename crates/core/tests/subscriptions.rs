@@ -261,3 +261,28 @@ fn categories_and_payment_methods() {
     let names: Vec<_> = s.categories().unwrap().into_iter().map(|c| c.name).collect();
     assert_eq!(names, ["Home", "Streaming"]);
 }
+
+#[test]
+fn pre_made_category_is_made_once_restored_after_delete_and_kept_when_renamed() {
+    let mut s = Store::open_in_memory().unwrap();
+    const ID: &str = "0190f000-0000-7000-8000-000000000001";
+    let c = s.ensure_category(ID, "Streaming", "#e50914").unwrap();
+    assert_eq!((c.id.as_str(), c.name.as_str()), (ID, "Streaming"));
+    s.update_category(&Category { name: "TV".into(), ..c.clone() }).unwrap();
+    assert_eq!(s.ensure_category(ID, "Streaming", "#e50914").unwrap().name, "TV");
+    s.delete_category(ID).unwrap();
+    assert!(s.categories().unwrap().is_empty());
+    s.ensure_category(ID, "Streaming", "#e50914").unwrap();
+    assert_eq!(s.categories().unwrap().iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["TV"]);
+}
+
+#[test]
+fn pre_made_category_picked_on_two_devices_is_one_after_sync() {
+    let mut a = Store::open_in_memory().unwrap();
+    let mut b = Store::open_in_memory().unwrap();
+    const ID: &str = "0190f000-0000-7000-8000-000000000001";
+    a.ensure_category(ID, "Streaming", "").unwrap();
+    b.ensure_category(ID, "Streaming", "").unwrap();
+    b.merge(&a.changes_since(0, 10_000, None).unwrap()).unwrap();
+    assert_eq!(b.categories().unwrap().len(), 1);
+}

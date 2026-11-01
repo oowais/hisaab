@@ -239,6 +239,7 @@ export const api = {
   deleteExtra: (id: string) => invoke<void>('delete_extra', { id }),
   restoreExtra: (id: string) => invoke<void>('restore_extra', { id }),
   addCategory: (name: string, color = '') => invoke<Category>('add_category', { name, color }),
+  ensureCategory: (id: string, name: string, color: string) => invoke<Category>('ensure_category', { id, name, color }),
   addPaymentMethod: (name: string) => invoke<PaymentMethod>('add_payment_method', { name }),
   updateCategory: (cat: Category) => invoke<void>('update_category', { cat }),
   deleteCategory: (id: string) => invoke<string[]>('delete_category', { id }),

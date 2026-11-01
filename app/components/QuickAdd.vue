@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Quick add: search the templates (or type any name), then the amount and a
-// sentence to tap: "monthly, starting today". "More" has everything else.
+// sentence to tap: "monthly, starting today". Below, what it is as grouped
+// chips (PaymentDetails); rarer things behind "+" chips.
 // From "Share → Hisaab" it opens on step 2 with what the shared text gave.
-import { ChevronDown, ChevronUp, Plus, X } from 'lucide-vue-next'
-import type { Category, Kind, PaymentMethod, Unit } from '~/composables/api'
+import { Plus, X } from 'lucide-vue-next'
+import type { Kind, Unit } from '~/composables/api'
 import { amountText as amountTextOf } from '~/utils/money'
 import type { Shared } from '~/utils/share'
 import type { Template } from '~/utils/templates'
@@ -106,14 +107,17 @@ const overBudget = computed(() => {
   return `This takes you to ${money(after)} a month, ${money(after - o.monthlyBudget)} over your budget.`
 })
 
-// ---- More
-const more = ref(false)
-const categories = ref<Category[]>([])
-const methods = ref<PaymentMethod[]>([])
+// ---- Details
 const categoryId = ref<string | null>(null)
 const methodId = ref<string | null>(null)
 const planLabel = ref('')
 const trial = ref(false)
+const planOpen = ref(false)
+const planInput = ref<HTMLInputElement>()
+function openPlan() {
+  planOpen.value = true
+  nextTick(() => planInput.value?.focus())
+}
 const trialEnd = ref<string | null>(null)
 const pickingTrialEnd = ref(false)
 const remindDays = ref('')
@@ -130,37 +134,9 @@ if (props.share) {
     amountText.value = amountTextOf(a.minor, a.currency)
   }
 }
-watch(more, async (open) => {
-  if (!open) return
-  categories.value = await api.categories().catch(() => [])
-  methods.value = await api.paymentMethods().catch(() => [])
-})
 watch(trial, (on) => {
   if (on && !trialEnd.value) trialEnd.value = addDays(start.value, 13)
 })
-const newCategory = ref('')
-const newMethod = ref('')
-async function addCategory() {
-  const n = newCategory.value.trim()
-  if (!n) return
-  const c = await api.addCategory(n).catch((e) => void (error.value = friendlyError(e, 'add the category')))
-  if (c) {
-    categories.value.push(c)
-    categoryId.value = c.id
-    newCategory.value = ''
-  }
-}
-async function addMethod() {
-  const n = newMethod.value.trim()
-  if (!n) return
-  const m = await api.addPaymentMethod(n).catch((e) => void (error.value = friendlyError(e, 'add the payment method')))
-  if (m) {
-    methods.value.push(m)
-    methodId.value = m.id
-    newMethod.value = ''
-  }
-}
-
 // ---- Save
 const error = ref('')
 const saving = ref(false)
@@ -181,7 +157,7 @@ async function save() {
         templateKey: template.value?.key ?? null,
         icon: icon.value,
         color: color.value,
-        categoryId: categoryId.value,
+        categoryId: await savedCategoryId(categoryId.value),
         paymentMethodId: methodId.value,
         url: url.value.trim() || null,
         notes: notes.value.trim(),
@@ -299,83 +275,41 @@ async function save() {
           </button>
         </div>
 
-        <button type="button" class="btn link more-toggle" :aria-expanded="more" @click="more = !more">
-          More <component :is="more ? ChevronUp : ChevronDown" :size="16" />
-        </button>
-        <div v-if="more" class="more">
-          <div class="chips" role="radiogroup" aria-label="Kind">
-            <button type="button" class="chip" :class="{ chosen: kind === 'subscription' }" @click="kind = 'subscription'">
-              Subscription
+        <PaymentDetails
+          v-model:kind="kind"
+          v-model:category-id="categoryId"
+          v-model:method-id="methodId"
+          v-model:my-share="myShare"
+          v-model:remind-days="remindDays"
+          v-model:url="url"
+          v-model:notes="notes"
+          class="details"
+          :template-key="template?.key"
+        >
+          <template #extras>
+            <button type="button" class="chip" :class="trial ? 'chosen' : 'off'" @click="trial = !trial">
+              <Plus v-if="!trial" :size="14" /> Free trial
             </button>
-            <button type="button" class="chip" :class="{ chosen: kind === 'bill' }" @click="kind = 'bill'">Bill</button>
-            <button type="button" class="chip" :class="{ chosen: estimated }" @click="estimated = !estimated">Amount varies</button>
-          </div>
-
-          <label class="label muted small">Shared with others? Your part</label>
-          <ShareChips v-model="myShare" />
-
-          <label class="label muted small">Category</label>
-          <div class="chips">
-            <button
-              v-for="c in categories"
-              :key="c.id"
-              type="button"
-              class="chip"
-              :class="{ chosen: categoryId === c.id }"
-              @click="categoryId = categoryId === c.id ? null : c.id"
-            >
-              {{ c.name }}
+            <button type="button" class="chip" :class="estimated ? 'chosen' : 'off'" @click="estimated = !estimated">
+              <Plus v-if="!estimated" :size="14" /> Amount varies
             </button>
-            <span class="new">
-              <input v-model="newCategory" class="field" placeholder="New category" @keydown.enter.prevent="addCategory" />
-              <button v-if="newCategory.trim()" type="button" class="icon-btn" aria-label="Add category" @click="addCategory">
-                <Plus :size="18" />
-              </button>
-            </span>
-          </div>
-
-          <label class="label muted small">Paid with</label>
-          <div class="chips">
-            <button
-              v-for="m in methods"
-              :key="m.id"
-              type="button"
-              class="chip"
-              :class="{ chosen: methodId === m.id }"
-              @click="methodId = methodId === m.id ? null : m.id"
-            >
-              {{ m.name }}
-            </button>
-            <span class="new">
-              <input v-model="newMethod" class="field" placeholder="Visa ..4417, PayPal" @keydown.enter.prevent="addMethod" />
-              <button v-if="newMethod.trim()" type="button" class="icon-btn" aria-label="Add payment method" @click="addMethod">
-                <Plus :size="18" />
-              </button>
-            </span>
-          </div>
-
-          <input v-model="planLabel" class="field" placeholder="Plan (Standard, Family…)" aria-label="Plan" />
-
-          <div class="trial">
-            <button type="button" class="chip" :class="{ chosen: trial }" @click="trial = !trial">Free trial</button>
-            <button v-if="trial" type="button" class="word" @click="pickingTrialEnd = true">
-              ends {{ trialEnd ? relativeDay(trialEnd) : '…' }}
-            </button>
-          </div>
-
-          <input
-            v-model="remindDays"
-            class="field"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            max="60"
-            placeholder="Remind days before (default)"
-            aria-label="Remind days before"
-          />
-          <input v-model="url" class="field" type="url" inputmode="url" placeholder="Website or cancel link" aria-label="Link" />
-          <textarea v-model="notes" class="field notes" rows="2" placeholder="Notes" aria-label="Notes" />
-        </div>
+            <button v-if="!planOpen && !planLabel" type="button" class="chip off" @click="openPlan"><Plus :size="14" /> Plan</button>
+          </template>
+          <template #fields>
+            <p v-if="trial" class="trial muted">
+              Free trial, ends
+              <button type="button" class="word" @click="pickingTrialEnd = true">{{ trialEnd ? relativeDay(trialEnd) : '…' }}</button>
+            </p>
+            <input
+              v-if="planOpen || planLabel"
+              ref="planInput"
+              v-model="planLabel"
+              class="field"
+              placeholder="Plan (Standard, Family…)"
+              aria-label="Plan"
+            />
+          </template>
+        </PaymentDetails>
 
         <p v-if="error" class="error">{{ error }}</p>
         <button type="submit" class="btn primary" :disabled="saving">Add {{ name.trim() }}</button>
@@ -506,37 +440,11 @@ async function save() {
   width: 4.5em;
   text-align: center;
 }
-.more-toggle {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-}
-.more {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.label {
-  margin: 4px 0 -4px;
-}
-.new {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-.new .field {
-  width: 11em;
-  padding: 6px 10px;
+.details {
+  margin-top: 8px;
 }
 .trial {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.notes {
-  resize: vertical;
+  margin: 0;
 }
 .error {
   margin: 0;
