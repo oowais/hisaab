@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   CirclePause,
+  MousePointerClick,
   Ban,
   Pencil,
   Plus,
@@ -97,7 +98,21 @@ async function moveTo(day: string | null) {
   }
 }
 const editing = ref<UpcomingCharge | null>(null)
-const open = (id: string, action?: string) => router.push({ path: `/sub/${id}`, query: action ? { action } : {} })
+// Wide window: Detail opens beside the list (?sub=<id>); else its own screen.
+const wide = useWide()
+const selected = computed(() => (typeof route.query.sub === 'string' ? route.query.sub : null))
+const open = (id: string, action?: string) =>
+  wide.value
+    ? router.replace({ query: { sub: id, ...(action ? { action } : {}) } })
+    : router.push({ path: `/sub/${id}`, query: action ? { action } : {} })
+const closeDetail = () => router.replace({ query: {} })
+// Narrowed while a payment was open: give it its own screen.
+watch(wide, (w) => {
+  if (!w && selected.value) {
+    const { sub, ...query } = route.query
+    router.replace({ path: `/sub/${sub}`, query })
+  }
+})
 function menu(e: MouseEvent, c: UpcomingCharge) {
   openMenu(e, [
     { label: 'Move this charge', icon: CalendarClock, run: () => (moving.value = c) },
@@ -111,89 +126,102 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <h1>Hisaab</h1>
-      <SyncDot />
-      <NuxtLink to="/calendar" class="icon-btn cal" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
-      <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
-        <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
-      </NuxtLink>
-    </header>
-    <SyncStaleHint />
+  <main class="page" :class="{ split: wide }">
+    <div class="list-col">
+      <header class="topbar">
+        <h1>Hisaab</h1>
+        <SyncDot />
+        <button v-if="wide && !empty" class="icon-btn" aria-label="Add a payment" @click="adding = true"><Plus :size="22" /></button>
+        <NuxtLink to="/calendar" class="icon-btn cal" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
+        <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
+          <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
+        </NuxtLink>
+      </header>
+      <SyncStaleHint />
 
-    <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="error" class="error">{{ error }}</p>
 
-    <template v-if="data && !empty">
-      <button class="total" :aria-label="`Total per ${SPANS[span]!.label}, tap to switch`" @click="span = (span + 1) % SPANS.length">
-        <span class="amount">{{ total }}</span
-        ><span class="muted"> / {{ SPANS[span]!.label }}</span>
-      </button>
-      <p v-if="data.excludedCurrencies.length || (data.ratesStale && data.ratesDate)" class="note muted small">
-        <TriangleAlert :size="14" />
-        <span v-if="data.excludedCurrencies.length">{{ data.excludedCurrencies.join(', ') }} not in totals (no exchange rate)</span>
-        <span v-else>Rates from {{ shortDay(data.ratesDate!) }}</span>
-      </p>
-
-      <div v-if="bothKinds" class="chips filters" role="radiogroup" aria-label="Show">
-        <button
-          v-for="f in ['all', 'subscription', 'bill'] as const"
-          :key="f"
-          class="chip"
-          role="radio"
-          :aria-checked="filter === f"
-          :class="{ chosen: filter === f }"
-          @click="filter = f"
-        >
-          {{ { all: 'All', subscription: 'Subscriptions', bill: 'Bills' }[f] }}
+      <template v-if="data && !empty">
+        <button class="total" :aria-label="`Total per ${SPANS[span]!.label}, tap to switch`" @click="span = (span + 1) % SPANS.length">
+          <span class="amount">{{ total }}</span
+          ><span class="muted"> / {{ SPANS[span]!.label }}</span>
         </button>
-      </div>
+        <p v-if="data.excludedCurrencies.length || (data.ratesStale && data.ratesDate)" class="note muted small">
+          <TriangleAlert :size="14" />
+          <span v-if="data.excludedCurrencies.length">{{ data.excludedCurrencies.join(', ') }} not in totals (no exchange rate)</span>
+          <span v-else>Rates from {{ shortDay(data.ratesDate!) }}</span>
+        </p>
 
-      <section v-for="g in groups" :key="g.id">
-        <h2 class="section-title">{{ g.title }}</h2>
-        <ul class="pane rows list">
-          <ChargeRow
-            v-for="c in g.rows"
-            :key="`${c.periodId}-${c.scheduledDate}`"
-            :charge="c"
-            :sub="byId.get(c.subscriptionId)!"
-            :main="data.mainCurrency"
-            :today="today"
-            @open="open(c.subscriptionId)"
-            @move="moving = c"
-            @menu="menu($event, c)"
-          />
-        </ul>
-      </section>
-      <p v-if="!groups.length" class="muted small quiet">Nothing due until the end of next month.</p>
+        <div v-if="bothKinds" class="chips filters" role="radiogroup" aria-label="Show">
+          <button
+            v-for="f in ['all', 'subscription', 'bill'] as const"
+            :key="f"
+            class="chip"
+            role="radio"
+            :aria-checked="filter === f"
+            :class="{ chosen: filter === f }"
+            @click="filter = f"
+          >
+            {{ { all: 'All', subscription: 'Subscriptions', bill: 'Bills' }[f] }}
+          </button>
+        </div>
 
-      <template v-if="paused.length">
-        <button class="pane paused-row" :aria-expanded="showPaused" @click="showPaused = !showPaused">
-          <CirclePause :size="20" class="muted" />
-          <span class="flex">{{ paused.length }} paused</span>
-          <component :is="showPaused ? ChevronUp : ChevronDown" :size="20" class="muted" />
-        </button>
-        <ul v-if="showPaused" class="pane rows list">
-          <li v-for="s in paused" :key="s.id">
-            <button class="sub-row" @click="open(s.id)">
-              <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
-              <span class="flex">{{ s.name }}</span>
-              <span v-if="s.current?.endDate" class="muted small">until {{ shortDay(s.current.endDate) }}</span>
-            </button>
-          </li>
-        </ul>
+        <section v-for="g in groups" :key="g.id">
+          <h2 class="section-title">{{ g.title }}</h2>
+          <ul class="pane rows list">
+            <ChargeRow
+              v-for="c in g.rows"
+              :key="`${c.periodId}-${c.scheduledDate}`"
+              :charge="c"
+              :class="{ selected: wide && c.subscriptionId === selected }"
+              :sub="byId.get(c.subscriptionId)!"
+              :main="data.mainCurrency"
+              :today="today"
+              @open="open(c.subscriptionId)"
+              @move="moving = c"
+              @menu="menu($event, c)"
+            />
+          </ul>
+        </section>
+        <p v-if="!groups.length" class="muted small quiet">Nothing due until the end of next month.</p>
+
+        <template v-if="paused.length">
+          <button class="pane paused-row" :aria-expanded="showPaused" @click="showPaused = !showPaused">
+            <CirclePause :size="20" class="muted" />
+            <span class="flex">{{ paused.length }} paused</span>
+            <component :is="showPaused ? ChevronUp : ChevronDown" :size="20" class="muted" />
+          </button>
+          <ul v-if="showPaused" class="pane rows list">
+            <li v-for="s in paused" :key="s.id">
+              <button class="sub-row" @click="open(s.id)">
+                <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
+                <span class="flex">{{ s.name }}</span>
+                <span v-if="s.current?.endDate" class="muted small">until {{ shortDay(s.current.endDate) }}</span>
+              </button>
+            </li>
+          </ul>
+        </template>
+        <NuxtLink v-if="endedCount" to="/archive" class="archive-link muted small">
+          <Archive :size="15" /> {{ endedCount }} ended
+        </NuxtLink>
       </template>
-      <NuxtLink v-if="endedCount" to="/archive" class="archive-link muted small"> <Archive :size="15" /> {{ endedCount }} ended </NuxtLink>
-    </template>
 
-    <div v-else-if="data" class="empty">
-      <CalendarClock :size="40" class="muted" />
-      <p>No payments yet</p>
-      <p class="muted small">Add your subscriptions and bills; the next charges show up here.</p>
-      <button class="btn primary" @click="adding = true"><Plus :size="18" /> Add a payment</button>
+      <div v-else-if="data" class="empty">
+        <CalendarClock :size="40" class="muted" />
+        <p>No payments yet</p>
+        <p class="muted small">Add your subscriptions and bills; the next charges show up here.</p>
+        <button class="btn primary" @click="adding = true"><Plus :size="18" /> Add a payment</button>
+      </div>
     </div>
+    <aside v-if="wide" class="detail-col pane">
+      <SubDetail v-if="selected" :id="selected" embedded @close="closeDetail" />
+      <div v-else class="pick muted">
+        <MousePointerClick :size="28" />
+        <span class="small">Pick a payment to see its history</span>
+      </div>
+    </aside>
 
-    <button v-if="!empty" class="fab ink" aria-label="Add a payment" @click="adding = true"><Plus :size="26" /></button>
+    <button v-if="!empty && !wide" class="fab ink" aria-label="Add a payment" @click="adding = true"><Plus :size="26" /></button>
     <QuickAdd v-if="adding" @close="adding = false" />
     <ChargeSheet v-if="editing" :charge="editing" :name="byId.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
     <DateSheet
@@ -314,5 +342,32 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   .fab {
     bottom: calc(24px + env(safe-area-inset-bottom));
   }
+}
+/* Wide window: the list, and the open payment beside it (sticky, scrolls on its own). */
+.page.split {
+  max-width: 1240px;
+  display: grid;
+  grid-template-columns: minmax(360px, 460px) 1fr;
+  gap: 24px;
+  padding-left: 112px;
+  align-items: start;
+}
+.detail-col {
+  position: sticky;
+  top: 8px;
+  height: calc(100vh - 16px);
+  padding: 0 16px;
+  overflow: hidden;
+}
+.pick {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.selected {
+  background: var(--glass-state);
 }
 </style>

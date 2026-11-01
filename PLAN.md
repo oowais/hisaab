@@ -248,7 +248,8 @@ Milestone 3 checklist:
 - [x] Detail: status card, actions by status (sheets with sensible default dates), mini timeline strip, periods, total spent, charge history (undo an override), edit, archive, delete with undo
 - [x] Settings: main currency, default reminder days
 - [x] Icon and colour picker (Quick add, Edit): 57 brand glyphs, 41 generic icons, 12 swatches
-- [ ] Not yet: desktop sidebar + list/detail split; managing categories, payment methods and templates in Settings; editing a past charge's amount (v1.1 "charge overrides UI")
+- [x] Desktop list/detail split (Nov 1, 2026): from 1100px wide, Upcoming with the open payment beside it (`/?sub=<id>`; `/sub/<id>` redirects there), tabs as a left rail
+- [ ] Not yet: managing categories, payment methods and templates in Settings
 
 Milestone 4 checklist:
 
@@ -286,7 +287,7 @@ Milestone 7 checklist:
 - [x] Android widget (`PaymentsWidget.kt`, JNI `widget`): monthly cost, next charges, + opens Quick add; refreshed on every arm and after background sync
 - [ ] Check on a phone: the widget (Kotlin only compiles in CI)
 
-**Next:** milestone 8 — later: shared/split cost, budget cap, CSV/Wallos import, trial countdown with cancel link. Also open from earlier milestones: desktop sidebar + list/detail split; managing categories, payment methods and templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
+**Next:** milestone 8 — later: shared/split cost, budget cap, CSV/Wallos import, trial countdown with cancel link. Also open from earlier milestones: managing categories, payment methods and templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
 
 ### Backlog (Befikr features not copied yet)
 
