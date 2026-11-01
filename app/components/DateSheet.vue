@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// Date picker: a glass sheet with quick picks and a month calendar. Emits a
+// Date picker: a glass sheet with quick picks and a month calendar (tap the
+// month for a month grid, its year for a year grid). Emits a
 // 'YYYY-MM-DD' day. Built from Befikr's DateTimeSheet, without the time
 // wheels (charges are due on days). Never the native pickers.
-import { Check, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 
 const props = withDefaults(
   defineProps<{
@@ -35,6 +36,7 @@ const quick = computed(() => {
 function pick(d: string) {
   day.value = d
   month.value = d.slice(0, 7) + '-01'
+  view.value = 'days'
 }
 
 // ---- Calendar (Monday first)
@@ -53,6 +55,44 @@ function shiftMonth(n: number) {
   const d = parseDay(month.value)
   d.setMonth(d.getMonth() + n)
   month.value = isoDay(d)
+}
+
+// ---- Jump: tap the month's name for the months of its year, the year
+// for a grid of years; picking one goes back down to the days.
+const view = ref<'days' | 'months' | 'years'>('days')
+const year = computed(() => Number(month.value.slice(0, 4)))
+const minMonth = computed(() => props.min?.slice(0, 7) ?? null)
+const months = computed(() =>
+  Array.from({ length: 12 }, (_, i) => {
+    const key = `${year.value}-${String(i + 1).padStart(2, '0')}`
+    return {
+      key,
+      label: new Date(year.value, i, 1).toLocaleDateString(undefined, { month: 'short' }),
+      past: minMonth.value != null && key < minMonth.value,
+    }
+  }),
+)
+const yearStart = ref(year.value - 4)
+const years = computed(() =>
+  Array.from({ length: 12 }, (_, i) => {
+    const y = yearStart.value + i
+    return { y, past: props.min != null && y < Number(props.min.slice(0, 4)) }
+  }),
+)
+function shiftYear(n: number) {
+  month.value = `${year.value + n}${month.value.slice(4)}`
+}
+function pickMonth(key: string) {
+  month.value = `${key}-01`
+  view.value = 'days'
+}
+function pickYear(y: number) {
+  month.value = `${y}${month.value.slice(4)}`
+  view.value = 'months'
+}
+function openYears() {
+  yearStart.value = year.value - 4
+  view.value = 'years'
 }
 
 const tooEarly = computed(() => props.min != null && day.value < props.min)
@@ -89,12 +129,23 @@ function clear() {
       </div>
 
       <div class="cal">
-        <div class="cal-head">
+        <div v-if="view === 'days'" class="cal-head">
           <button class="icon-btn" aria-label="Previous month" @click="shiftMonth(-1)"><ChevronLeft :size="22" /></button>
-          <span>{{ monthLabel }}</span>
+          <button class="jump" aria-label="Pick a month" @click="view = 'months'">{{ monthLabel }} <ChevronDown :size="16" /></button>
           <button class="icon-btn" aria-label="Next month" @click="shiftMonth(1)"><ChevronRight :size="22" /></button>
         </div>
-        <div class="grid">
+        <div v-else-if="view === 'months'" class="cal-head">
+          <button class="icon-btn" aria-label="Previous year" @click="shiftYear(-1)"><ChevronLeft :size="22" /></button>
+          <button class="jump" aria-label="Pick a year" @click="openYears">{{ year }} <ChevronDown :size="16" /></button>
+          <button class="icon-btn" aria-label="Next year" @click="shiftYear(1)"><ChevronRight :size="22" /></button>
+        </div>
+        <div v-else class="cal-head">
+          <button class="icon-btn" aria-label="Earlier years" @click="yearStart -= 12"><ChevronLeft :size="22" /></button>
+          <span>{{ yearStart }} – {{ yearStart + 11 }}</span>
+          <button class="icon-btn" aria-label="Later years" @click="yearStart += 12"><ChevronRight :size="22" /></button>
+        </div>
+
+        <div v-if="view === 'days'" class="grid">
           <span v-for="(w, i) in weekdays" :key="'w' + i" class="wd">{{ w }}</span>
           <button
             v-for="c in cells"
@@ -105,6 +156,30 @@ function clear() {
             @click="pick(c.d)"
           >
             {{ c.n }}
+          </button>
+        </div>
+        <div v-else-if="view === 'months'" class="grid wide">
+          <button
+            v-for="m in months"
+            :key="m.key"
+            class="cell"
+            :class="{ today: m.key === today.slice(0, 7), ink: m.key === day.slice(0, 7) }"
+            :disabled="m.past"
+            @click="pickMonth(m.key)"
+          >
+            {{ m.label }}
+          </button>
+        </div>
+        <div v-else class="grid wide">
+          <button
+            v-for="y in years"
+            :key="y.y"
+            class="cell"
+            :class="{ today: y.y === Number(today.slice(0, 4)), ink: y.y === Number(day.slice(0, 4)) }"
+            :disabled="y.past"
+            @click="pickYear(y.y)"
+          >
+            {{ y.y }}
           </button>
         </div>
       </div>
@@ -165,6 +240,21 @@ function clear() {
   align-items: center;
   justify-content: space-between;
   font-weight: 500;
+}
+.jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.grid.wide {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.grid.wide .cell {
+  height: 48px;
 }
 .grid {
   display: grid;
