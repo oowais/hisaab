@@ -7,7 +7,9 @@ import {
   Bell,
   BellRing,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clock,
   Coins,
   Download,
@@ -15,6 +17,7 @@ import {
   Gauge,
   Power,
   RefreshCw,
+  ShieldCheck,
   Tags,
   WifiOff,
 } from 'lucide-vue-next'
@@ -63,7 +66,10 @@ const currencyName = computed(() => {
   const c = settings.value?.mainCurrency
   return c ? (new Intl.DisplayNames(undefined, { type: 'currency' }).of(c) ?? c) : ''
 })
-async function set(key: 'main_currency' | 'default_remind_days' | 'reminder_time' | 'monthly_budget', value: string | number | null) {
+async function set(
+  key: 'main_currency' | 'default_remind_days' | 'reminder_time' | 'monthly_budget' | 'reminders_on',
+  value: string | number | boolean | null,
+) {
   try {
     await api.updateSetting(key, value)
     settings.value = await api.settings()
@@ -94,6 +100,7 @@ async function saveBudget() {
   if (amount !== settings.value.monthlyBudget) await set('monthly_budget', amount)
 }
 const REMIND = [0, 1, 2, 3, 5, 7, 14]
+const daysText = (n: number) => (n === 0 ? 'Same day' : n === 1 ? '1 day before' : `${n} days before`)
 const pickingTime = ref(false)
 
 // ---- Android: what reminders need. Re-read when back from the system's settings.
@@ -105,6 +112,18 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisible)
 })
 onUnmounted(() => document.removeEventListener('visibilitychange', onVisible))
+// All allowed: one quiet row (tap to see them); else only what's missing.
+const perms = computed(() =>
+  status.value
+    ? [
+        { icon: BellRing, label: 'Notifications', ok: status.value.notifications, allow: native.requestNotifications },
+        { icon: AlarmClock, label: 'Exact alarms', ok: status.value.exactAlarms, allow: native.openExactAlarmSettings },
+        { icon: BatteryFull, label: 'Unrestricted battery', ok: status.value.batteryUnrestricted, allow: native.openBatterySettings },
+      ]
+    : [],
+)
+const missing = computed(() => perms.value.filter((p) => !p.ok).length)
+const showPerms = ref(false)
 async function allow(f: () => Promise<void>) {
   await f().catch(() => {})
   setTimeout(loadStatus, 800)
@@ -172,43 +191,68 @@ async function setDesktop(f: () => Promise<void>) {
 
       <h2 class="section-title">Reminders</h2>
       <div class="pane rows">
-        <div class="item remind">
+        <div class="item">
           <Bell :size="20" class="muted" />
-          <span class="flex">Remind before a charge</span>
-        </div>
-        <div class="chips remind-chips" role="radiogroup" aria-label="Days before">
+          <span class="flex stack">
+            <span>Remind before a charge</span>
+            <span class="muted small">{{
+              settings.remindersOn
+                ? `${daysText(settings.defaultRemindDays)}, at ${settings.reminderTime}`
+                : 'Off: no reminders on any device'
+            }}</span>
+          </span>
           <button
-            v-for="n in REMIND"
-            :key="n"
             class="chip"
-            role="radio"
-            :aria-checked="settings.defaultRemindDays === n"
-            :class="{ chosen: settings.defaultRemindDays === n }"
-            @click="set('default_remind_days', n)"
+            :class="{ chosen: settings.remindersOn }"
+            :aria-pressed="settings.remindersOn"
+            @click="set('reminders_on', !settings.remindersOn)"
           >
-            {{ n === 0 ? 'Same day' : n === 1 ? '1 day' : `${n} days` }}
+            {{ settings.remindersOn ? 'On' : 'Off' }}
           </button>
         </div>
-        <button class="item" @click="pickingTime = true">
-          <Clock :size="20" class="muted" />
-          <span class="flex">At</span>
-          <span class="muted">{{ settings.reminderTime }}</span>
-        </button>
-        <template v-if="status">
-          <div
-            v-for="p in [
-              { icon: BellRing, label: 'Notifications', ok: status.notifications, allow: native.requestNotifications },
-              { icon: AlarmClock, label: 'Exact alarms', ok: status.exactAlarms, allow: native.openExactAlarmSettings },
-              { icon: BatteryFull, label: 'Unrestricted battery', ok: status.batteryUnrestricted, allow: native.openBatterySettings },
-            ]"
-            :key="p.label"
-            class="item"
-          >
-            <component :is="p.icon" :size="20" class="muted" />
-            <span class="flex">{{ p.label }}</span>
-            <span v-if="p.ok" class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
-            <button v-else class="btn" @click="allow(p.allow)">Allow</button>
+        <template v-if="settings.remindersOn">
+          <div class="item column">
+            <span class="muted small">How early</span>
+            <div class="chips" role="radiogroup" aria-label="Days before">
+              <button
+                v-for="n in REMIND"
+                :key="n"
+                class="chip"
+                role="radio"
+                :aria-checked="settings.defaultRemindDays === n"
+                :class="{ chosen: settings.defaultRemindDays === n }"
+                @click="set('default_remind_days', n)"
+              >
+                {{ n === 0 ? 'Same day' : n === 1 ? '1 day' : `${n} days` }}
+              </button>
+            </div>
           </div>
+          <div class="item">
+            <Clock :size="20" class="muted" />
+            <span class="flex stack"><span>Time</span></span>
+            <button class="chip" @click="pickingTime = true">{{ settings.reminderTime }}</button>
+          </div>
+          <template v-if="perms.length">
+            <button v-if="!missing" class="item" :aria-expanded="showPerms" @click="showPerms = !showPerms">
+              <ShieldCheck :size="20" class="muted" />
+              <span class="flex stack">
+                <span>Android permissions</span>
+                <span class="muted small">All allowed</span>
+              </span>
+              <component :is="showPerms ? ChevronUp : ChevronDown" :size="18" class="muted" />
+            </button>
+            <template v-for="p in perms" :key="p.label">
+              <div v-if="!p.ok || showPerms" class="item">
+                <component :is="p.icon" :size="20" class="muted" />
+                <span class="flex stack">
+                  <span>{{ p.label }}</span>
+                  <span v-if="!p.ok" class="muted small">Needed for reminders on time</span>
+                </span>
+                <span v-if="p.ok" class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
+                <button v-else class="btn" @click="allow(p.allow)">Allow</button>
+              </div>
+            </template>
+          </template>
         </template>
       </div>
       <TimeSheet
@@ -378,6 +422,7 @@ a.item {
   gap: 12px;
   min-height: 56px;
   width: 100%;
+  text-align: left;
 }
 .flex {
   flex: 1;
@@ -477,14 +522,15 @@ a.item {
   gap: 2px;
   text-align: left;
 }
-.remind {
-  min-height: 48px;
+.item.column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 0 14px;
 }
-.remind-chips {
+.chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 0 14px;
-  border-top: 0;
+  gap: 6px;
 }
 </style>

@@ -136,3 +136,18 @@ fn trial_notice_wins_a_tie_with_the_first_charge() {
     assert_eq!(f.show.unwrap().title, "Claude trial ends in 2 days");
     assert_eq!(f.next.unwrap().at_ms, at("2026-03-12", "09:00"));
 }
+
+#[test]
+fn switched_off_nothing_is_armed_or_shown() {
+    let mut s = Store::open_in_memory().unwrap();
+    let id = add(&mut s, "Netflix", monthly(499), "2026-01-15", None, None);
+    assert!(s.settings().unwrap().reminders_on);
+    s.reminders(at("2026-02-01", "12:00"), TZ).unwrap();
+    s.update_setting("reminders_on", &json!(false)).unwrap();
+    assert!(s.reminders(at("2026-02-01", "12:00"), TZ).unwrap().is_empty());
+    let f = s.on_fired(&id, at("2026-02-12", "09:00") + 500, TZ).unwrap();
+    assert_eq!((f.show, f.next), (None, None));
+    assert!(s.update_setting("reminders_on", &json!("no")).is_err());
+    s.update_setting("reminders_on", &json!(true)).unwrap();
+    assert_eq!(s.reminders(at("2026-02-01", "12:00"), TZ).unwrap().len(), 1);
+}

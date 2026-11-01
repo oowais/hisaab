@@ -114,6 +114,7 @@ export type Category = { id: string; name: string; color: string; sort: number }
 export type PaymentMethod = { id: string; name: string }
 export type Settings = {
   mainCurrency: string
+  remindersOn: boolean
   defaultRemindDays: number
   lastCurrency: string | null
   reminderTime: string

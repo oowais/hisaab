@@ -13,6 +13,8 @@ use crate::{schema, sync, Error, Result};
 pub struct Settings {
     /// Totals and converted amounts are shown in it.
     pub main_currency: String,
+    /// Reminders at all (off: none is armed or shown, snoozed ones too).
+    pub reminders_on: bool,
     /// Remind this many days before a charge, unless a subscription says otherwise.
     pub default_remind_days: u32,
     /// Quick add's currency when no template says otherwise.
@@ -105,6 +107,7 @@ impl Store {
     pub fn settings(&self) -> Result<Settings> {
         Ok(Settings {
             main_currency: self.main_currency()?,
+            reminders_on: self.setting("reminders_on")?.and_then(|v| v.as_bool()).unwrap_or(true),
             default_remind_days: self
                 .setting("default_remind_days")?
                 .and_then(|v| v.as_u64())
@@ -147,6 +150,7 @@ impl Store {
             "main_currency" | "last_currency" => value.as_str().is_some_and(crate::currency::is_currency_code),
             "reminder_time" => value.as_str().is_some_and(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").is_ok()),
             "default_remind_days" => value.as_u64().is_some_and(|n| n <= 60),
+            "reminders_on" => value.is_boolean(),
             _ => return Err(Error::Invalid(format!("unknown setting {key}"))),
         };
         if !ok {

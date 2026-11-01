@@ -204,6 +204,9 @@ impl Store {
     pub fn reminders(&self, now_ms: i64, tz: &str) -> Result<Vec<Reminder>> {
         let tz = parse_tz(tz);
         let mut out = Vec::new();
+        if !self.settings()?.reminders_on {
+            return Ok(out);
+        }
         for s in self.subscriptions()? {
             out.extend(self.next_for(&s, now_ms, tz)?);
         }
@@ -217,6 +220,9 @@ impl Store {
         let Ok(s) = self.subscription(id) else {
             return Ok(Fired { show: None, next: None });
         };
+        if !self.settings()?.reminders_on {
+            return Ok(Fired { show: None, next: None });
+        }
         let state = self.reminder_state(id, now_ms)?;
         let due = now_ms + SLACK_MS;
         let show = match state.snooze.as_ref().filter(|(at, ..)| *at > state.fired_through && *at <= due) {
