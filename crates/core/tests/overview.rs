@@ -85,3 +85,17 @@ fn per_year_factors() {
     assert_eq!(per_year(2, Unit::Year), 0.5);
     assert!((per_year(1, Unit::Week) - 52.1775).abs() < 0.001);
 }
+
+#[test]
+fn timeline_has_all_periods_but_not_archived() {
+    let mut s = store();
+    let a = add(&mut s, "A", monthly(100), "2025-01-01");
+    s.change_terms(&a, d("2025-06-01"), &monthly(200)).unwrap();
+    let b = add(&mut s, "B", monthly(100), "2025-01-01");
+    s.cancel(&b, d("2025-03-31")).unwrap();
+    let c = add(&mut s, "C", monthly(100), "2025-01-01");
+    s.set_archived(&c, true).unwrap();
+    let lanes = s.timeline(d("2026-01-01")).unwrap();
+    let got: Vec<_> = lanes.iter().map(|l| (l.view.subscription.name.as_str(), l.periods.len(), l.view.status)).collect();
+    assert_eq!(got, [("A", 2, SubscriptionStatus::Active), ("B", 1, SubscriptionStatus::Ended)]);
+}

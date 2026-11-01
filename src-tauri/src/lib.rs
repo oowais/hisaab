@@ -32,6 +32,11 @@ fn overview(db: State<Db>, today: NaiveDate) -> Res<Overview> {
 }
 
 #[tauri::command]
+fn timeline(db: State<Db>, today: NaiveDate) -> Res<Vec<TimelineLane>> {
+    with(&db, |s| s.timeline(today))
+}
+
+#[tauri::command]
 fn detail(db: State<Db>, id: String, today: NaiveDate) -> Res<Detail> {
     with(&db, |s| s.detail(&id, today))
 }
@@ -255,6 +260,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             overview,
+            timeline,
             detail,
             defaults,
             categories,

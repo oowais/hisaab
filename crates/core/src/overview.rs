@@ -204,3 +204,26 @@ impl Store {
         Ok(Detail { view, periods: s.periods, history, total_spent, excluded_currencies: excluded, history_from })
     }
 }
+
+/// One lane of the Timeline: a subscription and all its periods.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineLane {
+    #[serde(flatten)]
+    pub view: SubscriptionView,
+    /// By start date.
+    pub periods: Vec<Period>,
+}
+
+impl Store {
+    /// Every subscription that isn't archived, with its periods (ended ones too:
+    /// the screen decides whether to show them).
+    pub fn timeline(&self, today: NaiveDate) -> Result<Vec<TimelineLane>> {
+        let main = self.main_currency()?;
+        self.subscriptions()?
+            .into_iter()
+            .filter(|s| s.subscription.archived_at.is_none())
+            .map(|s| Ok(TimelineLane { view: self.view(&s, today, &main)?, periods: s.periods }))
+            .collect()
+    }
+}

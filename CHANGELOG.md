@@ -2,6 +2,12 @@
 
 One short note per milestone. Per-release notes come from the commits (`.github/scripts/release-notes.sh`).
 
+## Milestone 4 — Timeline (Nov 1, 2026)
+
+- Timeline: one lane per subscription over time, with trials, pauses and future changes.
+- Diamonds at price and plan changes; tap for what changed.
+- Zoom 6 months / 1 year / all, pinch or ctrl+scroll; sort by start, cost or category; show ended ones.
+
 ## Milestone 3 — MVP UI (Nov 1, 2026)
 
 - Upcoming: what's charged next, grouped by when, with the total per month, year or day in your main currency.

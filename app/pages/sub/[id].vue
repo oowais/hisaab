@@ -52,6 +52,8 @@ const ACTIONS: Record<string, { action: Action | 'archive'; label: string }[]> =
   ],
 }
 const acting = ref<Action | null>(null)
+// Opened from a Timeline bar (?period=): that period stands out.
+const focusPeriod = computed(() => (typeof route.query.period === 'string' ? route.query.period : null))
 const editing = ref(false)
 // Opened from Upcoming's menu (?action=pause).
 watch(
@@ -214,7 +216,13 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 
       <h2 class="section-title">Periods</h2>
       <ul class="pane rows list">
-        <li v-for="p in periods" :key="p.id" class="item" :class="{ future: p.future }">
+        <li
+          v-for="p in periods"
+          :key="p.id"
+          :ref="(el) => p.id === focusPeriod && el && (el as HTMLElement).scrollIntoView({ block: 'center' })"
+          class="item"
+          :class="{ future: p.future, focus: p.id === focusPeriod }"
+        >
           <span class="flex">{{ p.label }}</span>
           <span class="muted small">{{ p.range }}</span>
         </li>
@@ -335,6 +343,11 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
   gap: 12px;
   min-height: 48px;
   list-style: none;
+}
+.item.focus {
+  margin: 0 -14px;
+  padding: 0 14px;
+  background: var(--glass-state);
 }
 .item.future {
   opacity: 0.6;

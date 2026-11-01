@@ -205,8 +205,8 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 | 1   | Scaffold + CI + in-app updates | Done (Nov 1, 2026): released 0.1.1, Android update verified; Windows and Linux still to check |
 | 2   | Domain core                    | Done (Nov 1, 2026): `crates/core`, 34 tests                                                   |
 | 3   | MVP UI                         | Done (Nov 1, 2026)                                                                            |
-| 4   | Timeline                       | Next                                                                                          |
-| 5   | Notifications                  | —                                                                                             |
+| 4   | Timeline                       | Done (Nov 1, 2026)                                                                            |
+| 5   | Notifications                  | Next                                                                                          |
 | 6   | Sync + backup                  | —                                                                                             |
 | 7   | v1.1                           | —                                                                                             |
 
@@ -249,7 +249,15 @@ Milestone 3 checklist:
 - [x] Icon and colour picker (Quick add, Edit): 57 brand glyphs, 41 generic icons, 12 swatches
 - [ ] Not yet: desktop sidebar + list/detail split; managing categories, payment methods and templates in Settings; editing a past charge's amount (v1.1 "charge overrides UI")
 
-**Next:** milestone 4 — Timeline view (hand-built SVG): one lane per subscription, zoom, status styles, price-change diamonds, today line, sort, tap → Detail.
+Milestone 4 checklist:
+
+- [x] `timeline` command (core `TimelineLane`: view + all periods, archived left out)
+- [x] Hand-built SVG chart (`TimelineChart.vue`): lanes, month / quarter / year axis, status styles, future periods lighter, dashed today line, names that stay readable while scrolling
+- [x] Zoom: 6 months / 1 year / All, pinch, ctrl+scroll (keeps the point under the fingers / pointer)
+- [x] Price / plan change diamonds (tap: "Standard €13.99 → Basic €4.99"), sort by start / cost / category, show ended
+- [x] Tap a bar → Detail with that period highlighted
+
+**Next:** milestone 5 — notifications: copy Befikr's scheduler (Kotlin alarms on Android, in-process scheduler + tray on desktop); N days before a charge at the reminder time, trial ending 2 days before; Open · Snooze; reschedule on every change and on start.
 
 ### Backlog (Befikr features not copied yet)
 

@@ -16,7 +16,7 @@ mod subscriptions;
 mod fx;
 
 pub use model::*;
-pub use overview::{per_year, Detail, HistoryCharge, Overview, SubscriptionView, UpcomingCharge};
+pub use overview::{per_year, Detail, HistoryCharge, Overview, SubscriptionView, TimelineLane, UpcomingCharge};
 pub use store::{Settings, Store};
 pub use subscriptions::{NewOverride, NewSubscription};
 

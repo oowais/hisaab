@@ -78,6 +78,8 @@ export type Overview = {
   ratesStale: boolean
 }
 
+export type TimelineLane = SubscriptionView & { periods: Period[] }
+
 export type HistoryCharge = Charge & { inMain: number | null; overrideId: string | null }
 
 export type Detail = SubscriptionView & {
@@ -113,6 +115,7 @@ export type NewOverride = {
 
 export const api = {
   overview: (today: string) => invoke<Overview>('overview', { today }),
+  timeline: (today: string) => invoke<TimelineLane[]>('timeline', { today }),
   detail: (id: string, today: string) => invoke<Detail>('detail', { id, today }),
   defaults: (id: string, today: string) => invoke<{ nextCharge: string | null; cycleEnd: string }>('defaults', { id, today }),
   categories: () => invoke<Category[]>('categories'),
