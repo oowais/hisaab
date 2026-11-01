@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- In-app update: download the newer APK from GitHub. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app update: install a newer Hisaab APK (system asks to confirm). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application>
+        <receiver android:name="com.hisaab.reminders.UpdateReceiver" android:exported="false" />
+    </application>
+</manifest>

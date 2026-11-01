@@ -1,0 +1,105 @@
+<!-- Cold-start splash (Nuxt spaLoadingTemplate). plugins/splash.client.ts lifts it out
+     of Nuxt's loader so it stays up until the first screen has its data (useSplash).
+     Background = hisaab_window (Android) = --bg. Icon: src-tauri/android/icon. -->
+<script>
+  // Saved theme (Settings → Theme) before anything paints.
+  try {
+    const t = localStorage.getItem('hisaab.theme')
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
+  } catch {}
+</script>
+<div id="splash">
+  <style>
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 18px;
+      background: #e2e5ea;
+      color: #111;
+      font:
+        600 22px/1 system-ui,
+        Roboto,
+        sans-serif;
+      letter-spacing: -0.01em;
+    }
+    #splash svg {
+      width: 96px;
+      height: 96px;
+      border-radius: 24px;
+      box-shadow: 0 8px 28px rgb(0 0 0 / 12%);
+      animation: splash-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    #splash span {
+      animation: splash-in 0.5s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    #splash .dark {
+      display: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme='light']) #splash {
+        background: #0e0e0e;
+        color: #fafafa;
+      }
+      :root:not([data-theme='light']) #splash .light {
+        display: none;
+      }
+      :root:not([data-theme='light']) #splash .dark {
+        display: block;
+      }
+    }
+    :root[data-theme='dark'] #splash {
+      background: #0e0e0e;
+      color: #fafafa;
+    }
+    :root[data-theme='dark'] #splash .light {
+      display: none;
+    }
+    :root[data-theme='dark'] #splash .dark {
+      display: block;
+    }
+    /* Leaving (composables/useSplash.ts): fades and opens up as the page rises in behind. */
+    #splash {
+      z-index: 1000;
+      transition:
+        opacity 0.4s ease,
+        transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #splash.out {
+      opacity: 0;
+      transform: scale(1.04);
+      pointer-events: none;
+    }
+    @keyframes splash-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.96);
+      }
+    }
+  </style>
+  <svg class="light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+    <rect width="108" height="108" rx="26" fill="#F1E9DC" />
+    <g transform="translate(54 54) scale(0.95) translate(-54 -54)">
+      <path d="M30,38 L60,38" fill="none" stroke="#C49A5E" stroke-width="7.0" stroke-linecap="round" />
+      <path d="M70,38 L78,38" fill="none" stroke="#C49A5E" stroke-width="7.0" stroke-linecap="round" />
+      <path d="M30,54 L80,54" fill="none" stroke="#3B2A1A" stroke-width="8.0" stroke-linecap="round" />
+      <path d="M44,70 L72,70" fill="none" stroke="#C49A5E" stroke-width="7.0" stroke-linecap="round" />
+      <path d="M56,44.0 L66.0,54 L56,64.0 L46.0,54 Z" fill="#F1E9DC" />
+      <path d="M56,46.5 L63.5,54 L56,61.5 L48.5,54 Z" fill="#D2553F" />
+    </g>
+  </svg>
+  <svg class="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+    <rect width="108" height="108" rx="26" fill="#23262B" />
+    <g transform="translate(54 54) scale(0.95) translate(-54 -54)">
+      <path d="M30,38 L60,38" fill="none" stroke="#E8C27F" stroke-width="7.0" stroke-linecap="round" />
+      <path d="M70,38 L78,38" fill="none" stroke="#E8C27F" stroke-width="7.0" stroke-linecap="round" />
+      <path d="M30,54 L80,54" fill="none" stroke="#FFFFFF" stroke-width="8.0" stroke-linecap="round" />
+      <path d="M44,70 L72,70" fill="none" stroke="#E8C27F" stroke-width="7.0" stroke-linecap="round" />
+      <path d="M56,44.0 L66.0,54 L56,64.0 L46.0,54 Z" fill="#23262B" />
+      <path d="M56,46.5 L63.5,54 L56,61.5 L48.5,54 Z" fill="#FFB547" />
+    </g>
+  </svg>
+  <span>Hisaab</span>
+</div>

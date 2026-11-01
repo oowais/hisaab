@@ -1,0 +1,220 @@
+<script setup lang="ts">
+import { getVersion } from '@tauri-apps/api/app'
+import { Download, WifiOff } from 'lucide-vue-next'
+
+const version = ref('')
+onMounted(async () => (version.value = await getVersion().catch(() => '')))
+const update = useUpdate()
+const updateNote = ref('')
+const updateFailed = ref(false)
+async function checkUpdate() {
+  updateNote.value = ''
+  updateFailed.value = false
+  try {
+    await update.check(true)
+    if (update.pending.value) updateNote.value = `Hisaab ${update.pending.value} is still being built. Try again in a few minutes.`
+    else if (!update.available.value) updateNote.value = 'Up to date'
+  } catch (e) {
+    console.warn('update check:', e)
+    updateNote.value = /HTTP 403|rate/i.test(String(e))
+      ? 'GitHub is busy. Try again in an hour.'
+      : 'Couldn’t check for updates. Are you online?'
+    updateFailed.value = true
+  }
+}
+async function installUpdate() {
+  updateNote.value = ''
+  updateFailed.value = false
+  try {
+    const r = await update.install()
+    if (r.needsPermission) updateNote.value = 'Allow Hisaab to install apps, then tap Update again'
+  } catch (e) {
+    console.warn('update:', e)
+    updateNote.value = 'Update failed. Try again, or get it from the releases page.'
+    updateFailed.value = true
+  }
+}
+const { theme, setTheme } = useTheme()
+</script>
+
+<template>
+  <Screen title="Settings">
+    <h2 class="section-title">Theme</h2>
+    <div class="seg" role="radiogroup" aria-label="Theme">
+      <button
+        v-for="t in ['system', 'light', 'dark'] as const"
+        :key="t"
+        type="button"
+        role="radio"
+        class="opt"
+        :class="{ chosen: theme === t }"
+        :aria-checked="theme === t"
+        @click="setTheme(t)"
+      >
+        {{ { system: 'System', light: 'Light', dark: 'Dark' }[t] }}
+      </button>
+    </div>
+
+    <template v-if="version">
+      <div v-if="update.available.value" class="pane rows update">
+        <div class="item">
+          <Download :size="20" class="muted" />
+          <span class="flex stack">
+            <span>Hisaab {{ update.available.value }} is out</span>
+            <span class="muted small">{{
+              update.canInstall.value ? `You have ${version}` : 'Update with your package manager or the install script'
+            }}</span>
+          </span>
+          <button
+            v-if="update.canInstall.value"
+            class="btn primary"
+            :disabled="update.installing.value || !update.online.value"
+            @click="installUpdate"
+          >
+            {{ update.installing.value ? 'Downloading…' : 'Update' }}
+          </button>
+        </div>
+        <div v-if="update.installing.value" class="progress-row">
+          <div
+            class="bar"
+            role="progressbar"
+            aria-label="Downloading update"
+            :aria-valuenow="update.progress.value == null ? undefined : Math.round(update.progress.value * 100)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span
+              :class="{ indeterminate: update.progress.value == null }"
+              :style="update.progress.value == null ? undefined : { width: `${update.progress.value * 100}%` }"
+            />
+          </div>
+          <span class="muted small pct">{{ update.progress.value == null ? '' : `${Math.round(update.progress.value * 100)}%` }}</span>
+        </div>
+      </div>
+      <div class="muted small version" :class="{ tight: update.available.value }">
+        <p v-if="!update.available.value">Hisaab {{ version }}</p>
+        <button class="btn" :disabled="update.checking.value || update.installing.value || !update.online.value" @click="checkUpdate">
+          {{ update.checking.value ? 'Checking…' : 'Check for updates' }}
+        </button>
+        <button class="whats-new" @click="useWhatsNew().openAll()">What's new</button>
+        <p v-if="!update.online.value" class="offline"><WifiOff :size="14" /> No internet connection</p>
+        <p v-else-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
+      </div>
+    </template>
+  </Screen>
+</template>
+
+<style scoped>
+.whats-new {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  width: 100%;
+}
+.flex {
+  flex: 1;
+}
+.version {
+  margin-top: 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.version p {
+  margin: 0;
+}
+.version.tight {
+  margin-top: 12px;
+}
+.update {
+  margin-top: 40px;
+}
+.offline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.update .progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-top: 0;
+}
+.bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    inset 0 1px 1.5px var(--well-shade),
+    inset 0 0 0 1px var(--glass-edge);
+}
+.bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  transition: width 0.2s ease-out;
+}
+.bar span.indeterminate {
+  width: 35%;
+  animation: slide 1.2s ease-in-out infinite;
+}
+@keyframes slide {
+  from {
+    left: -35%;
+  }
+  to {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar span.indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
+.pct {
+  min-width: 3ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 var(--glass-control-rim),
+    inset 0 0 0 1px var(--line);
+}
+.opt {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.opt.chosen {
+  color: var(--text);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+</style>

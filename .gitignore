@@ -1,0 +1,19 @@
+node_modules/
+target/
+.output/
+.nuxt/
+.data/
+.nitro/
+.cache/
+dist
+*.apk
+*.aab
+.DS_Store
+.env
+.env.*
+!.env.example
+# Generated in CI (.github/scripts/whats-new.mjs)
+/public/whats-new.json
+
+# Local Claude Code preview config
+.claude/

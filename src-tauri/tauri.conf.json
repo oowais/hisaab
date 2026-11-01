@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Hisaab",
+  "version": "0.1.0",
+  "identifier": "com.owaisahmed.hisaab",
+  "build": {
+    "frontendDist": "../.output/public",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "vp run dev",
+    "beforeBuildCommand": "vp run generate"
+  },
+  "app": {
+    "windows": [{ "label": "main", "title": "Hisaab", "width": 420, "height": 820 }],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "shortDescription": "Private, local-first tracker for subscriptions and bills",
+    "longDescription": "Track every recurring payment, with its full price history. No server; your data stays on your devices.",
+    "category": "Finance",
+    "targets": "all",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "linux": { "deb": { "desktopTemplate": "../packaging/linux/hisaab.desktop" } },
+    "android": { "minSdkVersion": 26 }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2REMzOTI0NUREQzYxQ0YKUldUUFlkeGRKRG5jNWtUVnhQbHJpQXZNY3BRMm1mdkhpY2NHU1RkdW1wekpiMTdCYTJvTW5IRFoK",
+      "endpoints": ["https://github.com/oowais/hisaab/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  }
+}
