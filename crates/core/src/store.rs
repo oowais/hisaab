@@ -13,7 +13,8 @@ use crate::{schema, sync, Error, Result};
 pub struct Settings {
     /// Totals and converted amounts are shown in it.
     pub main_currency: String,
-    /// Reminders at all (off: none is armed or shown, snoozed ones too).
+    /// Reminders on this device (off: none is armed or shown here, snoozed
+    /// ones too). Device-local: not synced.
     pub reminders_on: bool,
     /// Remind this many days before a charge, unless a subscription says otherwise.
     pub default_remind_days: u32,
@@ -107,7 +108,7 @@ impl Store {
     pub fn settings(&self) -> Result<Settings> {
         Ok(Settings {
             main_currency: self.main_currency()?,
-            reminders_on: self.setting("reminders_on")?.and_then(|v| v.as_bool()).unwrap_or(true),
+            reminders_on: self.local_setting("reminders_on")?.and_then(|v| v.as_bool()).unwrap_or(true),
             default_remind_days: self
                 .setting("default_remind_days")?
                 .and_then(|v| v.as_u64())
@@ -120,6 +121,14 @@ impl Store {
                 .filter(|c| crate::currency::is_currency_code(c)),
             monthly_budget: self.setting("monthly_budget")?.and_then(|v| v.as_i64()).filter(|n| *n > 0),
         })
+    }
+
+    fn local_setting(&self, key: &str) -> Result<Option<serde_json::Value>> {
+        let raw: Option<String> = self
+            .conn
+            .query_row("SELECT value FROM local_setting WHERE key = ?1", [key], |r| r.get(0))
+            .optional()?;
+        Ok(raw.and_then(|v| serde_json::from_str(&v).ok()))
     }
 
     /// "HH:MM", default 09:00.
@@ -145,12 +154,23 @@ impl Store {
                 }
             }
         }
+        // This device's own: not synced.
+        if key == "reminders_on" {
+            if !value.is_boolean() {
+                return Err(Error::Invalid(format!("bad value for {key}")));
+            }
+            self.conn.execute(
+                "INSERT INTO local_setting (key, value) VALUES (?1, ?2)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                params![key, value.to_string()],
+            )?;
+            return Ok(());
+        }
         let ok = match key {
             "monthly_budget" => value.is_null() || value.as_i64().is_some_and(|n| n > 0),
             "main_currency" | "last_currency" => value.as_str().is_some_and(crate::currency::is_currency_code),
             "reminder_time" => value.as_str().is_some_and(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").is_ok()),
             "default_remind_days" => value.as_u64().is_some_and(|n| n <= 60),
-            "reminders_on" => value.is_boolean(),
             _ => return Err(Error::Invalid(format!("unknown setting {key}"))),
         };
         if !ok {
@@ -193,6 +213,11 @@ impl Store {
         // id, settings and paired devices.
         let sync = self.sync_settings()?;
         let peers = self.peers()?;
+        let local: Vec<(String, String)> = self
+            .conn
+            .prepare("SELECT key, value FROM local_setting")?
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
         // Reminders already shown here stay shown (the snapshot's state is older).
         let fired: Vec<(String, i64)> = self
             .conn
@@ -234,6 +259,10 @@ impl Store {
                  ON CONFLICT(subscription_id) DO UPDATE SET fired_through = max(fired_through, excluded.fired_through)",
                 params![sub, at],
             )?;
+        }
+        self.conn.execute("DELETE FROM local_setting", [])?; // device-local too
+        for (k, v) in local {
+            self.conn.execute("INSERT INTO local_setting (key, value) VALUES (?1, ?2)", params![k, v])?;
         }
         self.conn.execute("DELETE FROM peers", [])?; // device-local table, replaced wholesale
         for p in peers {

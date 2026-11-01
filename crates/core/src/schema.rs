@@ -203,5 +203,13 @@ pub fn migrations() -> Migrations<'static> {
             );
             CREATE INDEX extra_charge_sub ON extra_charge(subscription_id, due_date);",
         ),
+        // This device's own settings (not synced, kept on restore): e.g.
+        // reminders on or off here.
+        M::up(
+            "CREATE TABLE local_setting (
+              key   TEXT PRIMARY KEY,
+              value TEXT NOT NULL      -- JSON
+            );",
+        ),
     ])
 }

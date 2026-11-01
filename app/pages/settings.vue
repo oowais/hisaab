@@ -196,9 +196,7 @@ async function setDesktop(f: () => Promise<void>) {
           <span class="flex stack">
             <span>Remind before a charge</span>
             <span class="muted small">{{
-              settings.remindersOn
-                ? `${daysText(settings.defaultRemindDays)}, at ${settings.reminderTime}`
-                : 'Off: no reminders on any device'
+              settings.remindersOn ? `${daysText(settings.defaultRemindDays)}, at ${settings.reminderTime}` : 'Off on this device'
             }}</span>
           </span>
           <button

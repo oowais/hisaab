@@ -151,3 +151,15 @@ fn switched_off_nothing_is_armed_or_shown() {
     s.update_setting("reminders_on", &json!(true)).unwrap();
     assert_eq!(s.reminders(at("2026-02-01", "12:00"), TZ).unwrap().len(), 1);
 }
+
+#[test]
+fn off_is_this_device_only() {
+    let mut a = Store::open_in_memory().unwrap();
+    let mut b = Store::open_in_memory().unwrap();
+    add(&mut a, "Netflix", monthly(499), "2026-01-15", None, None);
+    a.update_setting("reminders_on", &json!(false)).unwrap();
+    b.merge(&a.changes_since(0, 10_000, None).unwrap()).unwrap();
+    assert!(!a.settings().unwrap().reminders_on);
+    assert!(b.settings().unwrap().reminders_on);
+    assert_eq!(b.reminders(at("2026-02-01", "12:00"), TZ).unwrap().len(), 1);
+}
