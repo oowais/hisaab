@@ -250,7 +250,7 @@ Milestone 3 checklist:
 - [x] Icon and colour picker (Quick add, Edit): 57 brand glyphs, 41 generic icons, 12 swatches
 - [x] Desktop list/detail split (Nov 1, 2026): from 1100px wide, Upcoming with the open payment beside it (`/?sub=<id>`; `/sub/<id>` redirects there), tabs as a left rail
 - [x] Categories and payment methods in Settings → Data (Nov 1, 2026): rename, colour, order, delete with undo (links restored)
-- [ ] Not yet: managing templates in Settings
+- [ ] Managing templates in Settings: skipped for now (Nov 1, 2026), by choice
 
 Milestone 4 checklist:
 
@@ -296,7 +296,7 @@ Milestone 8 so far:
 
 - [ ] CSV/Wallos import: skipped for now (Nov 1, 2026), by choice
 
-**Next:** your feedback from the Linux install; then managing templates in Settings and the checks on real devices. Also open from earlier milestones: managing templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
+**Next:** pick from the Backlog below; your feedback from the Linux install when you have it. Still open from earlier milestones: checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
 
 ### Backlog (Befikr features not copied yet)
 
