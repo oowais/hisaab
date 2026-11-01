@@ -44,17 +44,30 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         // Page background until the splash paints (no white flash on cold start).
         webView.setBackgroundColor(activity.getColor(R.color.hisaab_window))
         Notifier.ensureChannel(activity)
-        launchRoute = activity.intent?.getStringExtra(EXTRA_ROUTE)
+        launchRoute = routeFor(activity.intent)
     }
 
-    /** A notification tapped while the app is open: go to its route. */
+    /** A notification tapped (or something shared) while the app is open: go to its route. */
     override fun onNewIntent(intent: Intent) {
-        val route = intent.getStringExtra(EXTRA_ROUTE) ?: return
+        val route = routeFor(intent) ?: return
         launchRoute = route
         trigger("launchRoute", JSObject().apply { put("route", route) })
     }
 
-    /** Route the app was opened with (a notification), once. */
+    /**
+     * Route for an intent that opened the app: a notification's (e.g. snooze),
+     * or "Share → Hisaab" from another app, which opens Quick add prefilled.
+     */
+    private fun routeFor(intent: Intent?): String? {
+        if (intent == null) return null
+        intent.getStringExtra(EXTRA_ROUTE)?.let { return it }
+        if (intent.action != Intent.ACTION_SEND || intent.type?.startsWith("text/") != true) return null
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return null
+        val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT) ?: ""
+        return "/?shareText=${Uri.encode(text)}&shareSubject=${Uri.encode(subject)}"
+    }
+
+    /** Route the app was opened with (notification or share), once. */
     @Command
     fun takeLaunchRoute(invoke: Invoke) {
         val route = launchRoute

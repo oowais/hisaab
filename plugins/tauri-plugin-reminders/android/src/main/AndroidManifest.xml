@@ -14,6 +14,15 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application>
+        <!-- "Share → Hisaab" from other apps: merged into the app's main activity;
+             RemindersPlugin turns the shared text into a Quick add route. -->
+        <activity android:name="com.owaisahmed.hisaab.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
         <!-- Notification Snooze: a sheet over whatever is on screen, in its own
              task so the app doesn't open behind it. -->
         <activity

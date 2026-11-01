@@ -1,10 +1,14 @@
 <script setup lang="ts">
 // Quick add: search the templates (or type any name), then the amount and a
 // sentence to tap: "monthly, starting today". "More" has everything else.
+// From "Share → Hisaab" it opens on step 2 with what the shared text gave.
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-vue-next'
 import type { Category, Kind, PaymentMethod, Unit } from '~/composables/api'
+import { amountText as amountTextOf } from '~/utils/money'
+import type { Shared } from '~/utils/share'
 import type { Template } from '~/utils/templates'
 
+const props = defineProps<{ share?: Shared | null }>()
 const emit = defineEmits<{ close: [] }>()
 useBackClose(() => emit('close'))
 const toast = useToast()
@@ -17,7 +21,9 @@ const name = ref('')
 const chosen = computed(() => !!name.value.trim())
 const matches = computed(() => searchTemplates(query.value, 6))
 const search = ref<HTMLInputElement>()
-onMounted(() => search.value?.focus())
+onMounted(() => {
+  if (!props.share) search.value?.focus()
+})
 
 // ---- Step 2: how much, how often, from when
 const amountText = ref('')
@@ -31,7 +37,7 @@ const amountInput = ref<HTMLInputElement>()
 
 onMounted(async () => {
   const s = await api.settings().catch(() => null)
-  if (s && !template.value?.currency) currency.value = s.lastCurrency ?? s.mainCurrency
+  if (s && !template.value?.currency && !props.share?.amount) currency.value = s.lastCurrency ?? s.mainCurrency
 })
 
 // The tile: the template's (or a random colour), until changed in the icon sheet.
@@ -113,6 +119,17 @@ const pickingTrialEnd = ref(false)
 const remindDays = ref('')
 const url = ref('')
 const notes = ref('')
+
+if (props.share) {
+  const { template: t, name: n, url: link, amount: a } = props.share
+  if (link) url.value = link
+  query.value = n
+  choose(t)
+  if (a) {
+    currency.value = a.currency
+    amountText.value = amountTextOf(a.minor, a.currency)
+  }
+}
 watch(more, async (open) => {
   if (!open) return
   categories.value = await api.categories().catch(() => [])

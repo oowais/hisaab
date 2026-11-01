@@ -17,6 +17,7 @@ import {
   TriangleAlert,
 } from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
+import type { Shared } from '~/utils/share'
 
 const update = useUpdate()
 const router = useRouter()
@@ -29,6 +30,18 @@ watch(
   () => route.query.add,
   (v) => {
     if (!v) return
+    adding.value = true
+    router.replace({ query: {} })
+  },
+  { immediate: true },
+)
+// "Share → Hisaab" (Android): opened with the shared text in the query.
+const shared = ref<Shared | null>(null)
+watch(
+  () => route.query.shareText,
+  (text) => {
+    if (typeof text !== 'string') return
+    shared.value = fromShare(text, String(route.query.shareSubject ?? ''))
     adding.value = true
     router.replace({ query: {} })
   },
@@ -266,7 +279,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
     </aside>
 
     <button v-if="!empty && !wide" class="fab ink" aria-label="Add a payment" @click="adding = true"><Plus :size="26" /></button>
-    <QuickAdd v-if="adding" @close="adding = false" />
+    <QuickAdd v-if="adding" :share="shared" @close="((adding = false), (shared = null))" />
     <ChargeSheet v-if="editing" :charge="editing" :name="byId.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
     <DateSheet
       v-if="moving"
