@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use crate::dates::{next_day, prev_day};
 use crate::invariants::{validate_periods, validate_terms};
 use crate::model::*;
-use crate::occurrence::{is_scheduled, next_charge, occurrences};
+use crate::occurrence::{is_scheduled, next_charge, occurrences, with_extras};
 use crate::store::{new_id, Store};
 use crate::{Error, Result};
 
@@ -51,6 +51,18 @@ pub struct NewOverride {
     pub actual_currency: Option<String>,
     pub settled_amount_minor: Option<i64>,
     pub settled_currency: Option<String>,
+}
+
+/// A one-time charge to add (`ExtraCharge` without its id).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewExtraCharge {
+    pub subscription_id: String,
+    pub due_date: NaiveDate,
+    pub amount_minor: i64,
+    pub currency: String,
+    #[serde(default)]
+    pub label: String,
 }
 
 fn date(s: &str) -> rusqlite::Result<NaiveDate> {
@@ -141,6 +153,37 @@ fn load_overrides(c: &Connection, sub_id: &str) -> Result<Vec<ChargeOverride>> {
     ))?;
     let rows = st.query_map([sub_id], override_row)?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+const EXTRA_COLS: &str = "id, subscription_id, due_date, amount_minor, currency, label";
+
+fn extra_row(r: &Row) -> rusqlite::Result<ExtraCharge> {
+    Ok(ExtraCharge {
+        id: r.get(0)?,
+        subscription_id: r.get(1)?,
+        due_date: date(&r.get::<_, String>(2)?)?,
+        amount_minor: r.get(3)?,
+        currency: r.get(4)?,
+        label: r.get(5)?,
+    })
+}
+
+fn load_extras(c: &Connection, sub_id: &str) -> Result<Vec<ExtraCharge>> {
+    let mut st = c.prepare(&format!(
+        "SELECT {EXTRA_COLS} FROM extra_charge WHERE subscription_id = ?1 AND deleted_at IS NULL ORDER BY due_date, id"
+    ))?;
+    let rows = st.query_map([sub_id], extra_row)?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+fn check_extra(amount_minor: i64, currency: &str) -> Result<()> {
+    if amount_minor <= 0 {
+        return Err(Error::Invalid("amount must be more than 0".into()));
+    }
+    if !crate::currency::is_currency_code(currency) {
+        return Err(Error::Invalid(format!("unknown currency {currency:?}")));
+    }
+    Ok(())
 }
 
 fn load_subscription(c: &Connection, id: &str) -> Result<Subscription> {
@@ -521,6 +564,7 @@ impl Store {
             subscription: load_subscription(&self.conn, id)?,
             periods: load_periods(&self.conn, id)?,
             overrides: load_overrides(&self.conn, id)?,
+            extras: load_extras(&self.conn, id)?,
         })
     }
 
@@ -535,6 +579,7 @@ impl Store {
                 Ok(SubscriptionDetail {
                     periods: load_periods(&self.conn, &s.id)?,
                     overrides: load_overrides(&self.conn, &s.id)?,
+                    extras: load_extras(&self.conn, &s.id)?,
                     subscription: s,
                 })
             })
@@ -830,13 +875,75 @@ impl Store {
         })
     }
 
+    // ---- One-time charges ----
+
+    pub fn add_extra(&mut self, e: &NewExtraCharge) -> Result<ExtraCharge> {
+        check_extra(e.amount_minor, &e.currency)?;
+        load_subscription(&self.conn, &e.subscription_id)?;
+        let id = new_id();
+        self.write(|c, now| {
+            c.execute(
+                "INSERT INTO extra_charge (id, subscription_id, due_date, amount_minor, currency, label, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+                params![id, e.subscription_id, e.due_date.to_string(), e.amount_minor, e.currency, e.label.trim(), now],
+            )?;
+            Ok(())
+        })?;
+        Ok(ExtraCharge {
+            id,
+            subscription_id: e.subscription_id.clone(),
+            due_date: e.due_date,
+            amount_minor: e.amount_minor,
+            currency: e.currency.clone(),
+            label: e.label.trim().into(),
+        })
+    }
+
+    /// Change a one-time charge's date, amount, currency or note.
+    pub fn update_extra(&mut self, e: &ExtraCharge) -> Result<()> {
+        check_extra(e.amount_minor, &e.currency)?;
+        self.write(|c, now| {
+            let n = c.execute(
+                "UPDATE extra_charge SET due_date = ?2, amount_minor = ?3, currency = ?4, label = ?5, updated_at = ?6
+                 WHERE id = ?1 AND deleted_at IS NULL",
+                params![e.id, e.due_date.to_string(), e.amount_minor, e.currency, e.label.trim(), now],
+            )?;
+            if n == 0 {
+                return Err(Error::NotFound(e.id.clone()));
+            }
+            Ok(())
+        })
+    }
+
+    /// Soft delete; [`Store::restore_extra`] undoes it.
+    pub fn delete_extra(&mut self, id: &str) -> Result<()> {
+        self.set_extra_deleted(id, true)
+    }
+
+    pub fn restore_extra(&mut self, id: &str) -> Result<()> {
+        self.set_extra_deleted(id, false)
+    }
+
+    fn set_extra_deleted(&mut self, id: &str, deleted: bool) -> Result<()> {
+        self.write(|c, now| {
+            let n = c.execute(
+                "UPDATE extra_charge SET deleted_at = ?2, updated_at = ?3 WHERE id = ?1 AND (deleted_at IS NULL) = ?4",
+                params![id, deleted.then_some(now), now, deleted],
+            )?;
+            if n == 0 {
+                return Err(Error::NotFound(id.into()));
+            }
+            Ok(())
+        })
+    }
+
     // ---- Charges ----
 
     /// Charges of all subscriptions (archived ones left out) due in `[from, to]`.
     pub fn charges(&self, from: NaiveDate, to: NaiveDate, today: NaiveDate) -> Result<Vec<Charge>> {
         let mut out: Vec<Charge> = Vec::new();
         for s in self.subscriptions()?.into_iter().filter(|s| s.subscription.archived_at.is_none()) {
-            out.extend(occurrences(&s.periods, &s.overrides, from, to, today));
+            out.extend(with_extras(occurrences(&s.periods, &s.overrides, from, to, today), &s.extras, from, to, today));
         }
         out.sort_by(|a, b| (a.due_date, &a.subscription_id).cmp(&(b.due_date, &b.subscription_id)));
         Ok(out)

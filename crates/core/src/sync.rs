@@ -59,6 +59,11 @@ pub(crate) const SYNCED: &[Synced] = &[
             "settled_amount_minor", "settled_currency", "created_at", "deleted_at",
         ],
     },
+    Synced {
+        table: "extra_charge",
+        key: "id",
+        fields: &["subscription_id", "due_date", "amount_minor", "currency", "label", "created_at", "deleted_at"],
+    },
 ];
 
 /// One field's latest value, as exchanged between peers.

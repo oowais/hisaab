@@ -188,5 +188,20 @@ pub fn migrations() -> Migrations<'static> {
         ),
         // A shared payment: the percent that's yours (NULL = all of it).
         M::up("ALTER TABLE subscription ADD COLUMN my_share INTEGER;"),
+        // One-time charges on a subscription, besides its schedule.
+        M::up(
+            "CREATE TABLE extra_charge (
+              id              TEXT PRIMARY KEY,
+              subscription_id TEXT NOT NULL,
+              due_date        TEXT NOT NULL,
+              amount_minor    INTEGER NOT NULL,
+              currency        TEXT NOT NULL,
+              label           TEXT NOT NULL DEFAULT '',
+              created_at      INTEGER NOT NULL,
+              updated_at      INTEGER NOT NULL,
+              deleted_at      INTEGER
+            );
+            CREATE INDEX extra_charge_sub ON extra_charge(subscription_id, due_date);",
+        ),
     ])
 }

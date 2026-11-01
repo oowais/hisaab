@@ -79,14 +79,7 @@ const editing = ref<UpcomingCharge | null>(null)
 async function moveTo(day: string | null) {
   const c = moving.value
   moving.value = null
-  if (!c || !day || day === c.dueDate) return
-  try {
-    await api.setOverride({ periodId: c.periodId, dueDate: c.scheduledDate, kind: 'moved', newDueDate: day })
-    changed()
-    toast.show({ message: `Moved to ${relativeDay(day)}` })
-  } catch (e) {
-    toast.show({ message: friendlyError(e, 'move the charge') })
-  }
+  if (c && day && day !== c.dueDate) await moveCharge(c, day)
 }
 const open = (id: string) => router.push(`/sub/${id}`)
 </script>
@@ -143,7 +136,7 @@ const open = (id: string) => router.push(`/sub/${id}`)
           }}
         </h2>
         <ul v-if="dayCharges.length" class="pane rows list">
-          <template v-for="c in dayCharges" :key="`${c.periodId}-${c.scheduledDate}`">
+          <template v-for="c in dayCharges" :key="chargeKey(c)">
             <ChargeRow
               v-if="subs.get(c.subscriptionId)"
               :charge="c"
@@ -168,7 +161,15 @@ const open = (id: string) => router.push(`/sub/${id}`)
       @update:model-value="moveTo"
       @close="moving = null"
     />
-    <ChargeSheet v-if="editing" :charge="editing" :name="subs.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
+    <ExtraSheet
+      v-if="editing?.extraId"
+      :subscription-id="editing.subscriptionId"
+      :name="subs.get(editing.subscriptionId)?.name ?? ''"
+      :currency="editing.currency"
+      :extra="extraOf(editing)"
+      @close="editing = null"
+    />
+    <ChargeSheet v-else-if="editing" :charge="editing" :name="subs.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
   </Screen>
 </template>
 

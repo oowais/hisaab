@@ -295,6 +295,7 @@ Milestone 8 so far:
 - [x] Shared payments (Nov 1, 2026): `subscription.my_share` (percent, synced; migration 5), set in Quick add's More and Edit (Just me / Half / A third / A quarter / other %); the charge stays whole, totals, Stats, Calendar, total spent and the budget count your part; rows show "yours €5.00"
 - [x] Search (Nov 1, 2026, from the Backlog; Befikr's): `/search` from Upcoming's header, `/` or Ctrl+F on computers; name, notes, link, plans, category and payment method, every word must appear; running first, then ended and archived (core `search.rs`)
 - [x] Share to Hisaab (Nov 1, 2026, from the Backlog; Befikr's): Android share sheet → Quick add on step 2 with what the text gives (`app/utils/share.ts`): a template by the link's site or a name in the text, the amount and currency, the link; else the subject, first line or site as the name. Needs a release to check on a phone (Kotlin only compiles in CI)
+- [x] One-time charges (Nov 1, 2026): any number per payment, besides its schedule (`extra_charge`, synced; migration 6): what for, amount, currency, day; added from Detail ("One-time charge", More menu), edit / move / delete with undo there, on Upcoming and in Calendar. Count as spend (Upcoming, Calendar, history, total spent, Stats months, your part when shared); not in the yearly / monthly cost or the budget bar; no reminder
 
 - [ ] CSV/Wallos import: skipped for now (Nov 1, 2026), by choice
 

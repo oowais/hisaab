@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::dates::{add_months_clamped, prev_day};
 use crate::invariants::status_on;
 use crate::model::*;
-use crate::occurrence::{next_charge, occurrences};
+use crate::occurrence::{next_charge, occurrences, with_extras};
 use crate::store::Store;
 use crate::Result;
 
@@ -190,12 +190,21 @@ impl Store {
         let main = self.main_currency()?;
         let s = self.subscription(id)?;
         let view = self.view(&s, today, &main)?;
-        let history_from = s.periods.first().map(|p| p.start_date).filter(|d| *d <= today);
+        // A one-time charge may come before the first period.
+        let history_from = s
+            .periods
+            .first()
+            .map(|p| p.start_date)
+            .into_iter()
+            .chain(s.extras.first().map(|e| e.due_date))
+            .min()
+            .filter(|d| *d <= today);
         let mut history = Vec::new();
         let mut total_spent = 0;
         let mut excluded: Vec<String> = Vec::new();
         if let Some(from) = history_from {
-            for c in occurrences(&s.periods, &s.overrides, from, today, today).into_iter().rev() {
+            let charges = occurrences(&s.periods, &s.overrides, from, today, today);
+            for c in with_extras(charges, &s.extras, from, today, today).into_iter().rev() {
                 let in_main = self.charge_in(&c, &main)?;
                 match in_main {
                     Some(v) => total_spent += s.subscription.part(v),
@@ -209,7 +218,8 @@ impl Store {
         excluded.dedup();
         let mut coming = Vec::new();
         if let Some(from) = today.succ_opt() {
-            for c in occurrences(&s.periods, &s.overrides, from, end_of_next_month(today), today) {
+            let to = end_of_next_month(today);
+            for c in with_extras(occurrences(&s.periods, &s.overrides, from, to, today), &s.extras, from, to, today) {
                 let in_main = self.charge_in(&c, &main)?;
                 let override_id = override_of(&s.overrides, &c);
                 coming.push(HistoryCharge { charge: c, in_main, override_id });

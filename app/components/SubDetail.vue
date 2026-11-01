@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // A subscription: what it costs now, its status actions, its history of
-// periods and charges, and what it has cost so far. Its own screen on a
+// periods and charges (one-time ones too), and what it has cost so far. Its own screen on a
 // phone (pages/sub/[id].vue), the right-hand pane beside Upcoming on a wide
 // window (`embedded`).
-import { Archive, ArchiveRestore, ExternalLink, MoreVertical, Pencil, Trash2, Undo2 } from 'lucide-vue-next'
-import type { Action, Detail, HistoryCharge } from '~/composables/api'
+import { Archive, ArchiveRestore, ExternalLink, MoreVertical, Pencil, Plus, Trash2, Undo2 } from 'lucide-vue-next'
+import type { Action, Detail, ExtraCharge, HistoryCharge } from '~/composables/api'
 import DetailPane from '~/components/DetailPane.vue'
 import Screen from '~/components/Screen.vue'
 
@@ -133,6 +133,7 @@ async function remove() {
 function more(e: MouseEvent) {
   openMenu(e, [
     { label: 'Edit', icon: Pencil, run: () => (editing.value = true) },
+    { label: 'Add a one-time charge', icon: Plus, run: () => (addingExtra.value = true) },
     sub.value?.archivedAt
       ? { label: 'Unarchive', icon: ArchiveRestore, run: () => archive(false) }
       : { label: 'Archive', icon: Archive, run: () => archive(true) },
@@ -221,7 +222,29 @@ async function undoOverride(c: HistoryCharge) {
     .then(changed)
     .catch((e) => toast.show({ message: friendlyError(e, 'undo it') }))
 }
+// ---- One-time charges: add as many as needed; edit or delete one.
+const addingExtra = ref(false)
+const editingExtra = ref<ExtraCharge | null>(null)
+const openCharge = (c: HistoryCharge) => (c.extraId ? (editingExtra.value = extraOf(c)) : (editingCharge.value = c))
+async function deleteExtra(c: HistoryCharge) {
+  if (!c.extraId) return
+  const id = c.extraId
+  await api
+    .deleteExtra(id)
+    .then(changed)
+    .then(() =>
+      toast.show({ message: 'One-time charge deleted', action: { label: 'Undo', run: () => void api.restoreExtra(id).then(changed) } }),
+    )
+    .catch((e) => toast.show({ message: friendlyError(e, 'delete it') }))
+}
+
 function chargeMenu(e: MouseEvent, c: HistoryCharge) {
+  if (c.extraId)
+    return openMenu(e, [
+      { label: 'Edit this charge', icon: Pencil, run: () => openCharge(c) },
+      'separator',
+      { label: 'Delete', icon: Trash2, danger: true, run: () => deleteExtra(c) },
+    ])
   openMenu(e, [
     { label: 'Edit this charge', icon: Pencil, run: () => (editingCharge.value = c) },
     ...(c.overrideId ? [{ label: 'Back to the usual charge', icon: Undo2, run: () => undoOverride(c) }] : []),
@@ -305,15 +328,17 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
           <span class="muted small">{{ p.range }}</span>
         </li>
       </ul>
+      <button type="button" class="link small add-extra" @click="addingExtra = true"><Plus :size="14" /> One-time charge</button>
 
       <template v-if="sub.coming.length">
         <h2 class="section-title">Coming</h2>
         <ul class="pane rows list">
-          <li v-for="c in sub.coming" :key="`${c.periodId}-${c.scheduledDate}`" class="item" @contextmenu="chargeMenu($event, c)">
-            <button class="charge" @click="editingCharge = c">
+          <li v-for="c in sub.coming" :key="chargeKey(c)" class="item" @contextmenu="chargeMenu($event, c)">
+            <button class="charge" @click="openCharge(c)">
               <span class="flex">
                 {{ shortDay(c.dueDate, today) }}
-                <span v-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
+                <span v-if="c.extraId" class="muted small">· {{ c.label ?? 'one-time' }}</span>
+                <span v-else-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
                 <span v-else-if="c.estimated" class="muted small">· about</span>
               </span>
               <span class="amount">
@@ -331,11 +356,12 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
           <span v-if="sub.excludedCurrencies.length" class="muted">(without {{ sub.excludedCurrencies.join(', ') }})</span>
         </h2>
         <ul class="pane rows list">
-          <li v-for="c in sub.history" :key="`${c.periodId}-${c.scheduledDate}`" class="item" @contextmenu="chargeMenu($event, c)">
-            <button class="charge" @click="editingCharge = c">
+          <li v-for="c in sub.history" :key="chargeKey(c)" class="item" @contextmenu="chargeMenu($event, c)">
+            <button class="charge" @click="openCharge(c)">
               <span class="flex">
                 {{ shortDay(c.dueDate, today) }}
-                <span v-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
+                <span v-if="c.extraId" class="muted small">· {{ c.label ?? 'one-time' }}</span>
+                <span v-else-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
                 <span v-else-if="c.estimated" class="small hint">· add the real amount</span>
               </span>
               <span class="amount">
@@ -359,6 +385,14 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
       :name="sub.name"
       :override-id="editingCharge.overrideId"
       @close="editingCharge = null"
+    />
+    <ExtraSheet
+      v-if="(addingExtra || editingExtra) && sub"
+      :subscription-id="sub.id"
+      :name="sub.name"
+      :currency="sub.current?.currency ?? main"
+      :extra="editingExtra"
+      @close="((addingExtra = false), (editingExtra = null))"
     />
     <ActionSheet v-if="acting && sub" :action="acting" :sub="sub" @close="acting = null" @done="done" />
     <SnoozeSheet
@@ -402,6 +436,10 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 }
 .price {
   font-size: 1.25rem;
+}
+.add-extra {
+  align-self: flex-start;
+  margin: 8px 0 0;
 }
 .link {
   display: inline-flex;

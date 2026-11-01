@@ -58,7 +58,22 @@ export type Charge = {
   estimated: boolean
   status: 'upcoming' | 'paid'
   isOverride: boolean
+  /** A one-time charge (not from the schedule): its id; `periodId` is ''. */
+  extraId: string | null
+  /** A one-time charge's note. */
+  label: string | null
 }
+
+/** A one-time charge on a subscription, besides its schedule. */
+export type ExtraCharge = {
+  id: string
+  subscriptionId: string
+  dueDate: string
+  amountMinor: number
+  currency: string
+  label: string
+}
+export type NewExtraCharge = Omit<ExtraCharge, 'id'>
 
 export type SubscriptionView = Subscription & {
   status: Status
@@ -219,6 +234,10 @@ export const api = {
   restoreSubscription: (id: string) => invoke<void>('restore_subscription', { id }),
   setOverride: (o: NewOverride) => invoke<{ id: string }>('set_override', { o }),
   deleteOverride: (id: string) => invoke<void>('delete_override', { id }),
+  addExtra: (e: NewExtraCharge) => invoke<ExtraCharge>('add_extra', { e }),
+  updateExtra: (e: ExtraCharge) => invoke<void>('update_extra', { e }),
+  deleteExtra: (id: string) => invoke<void>('delete_extra', { id }),
+  restoreExtra: (id: string) => invoke<void>('restore_extra', { id }),
   addCategory: (name: string, color = '') => invoke<Category>('add_category', { name, color }),
   addPaymentMethod: (name: string) => invoke<PaymentMethod>('add_payment_method', { name }),
   updateCategory: (cat: Category) => invoke<void>('update_category', { cat }),

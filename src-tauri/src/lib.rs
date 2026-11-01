@@ -209,6 +209,26 @@ fn delete_override(app: AppHandle, id: String) -> Res<()> {
 }
 
 #[tauri::command]
+fn add_extra(app: AppHandle, e: NewExtraCharge) -> Res<ExtraCharge> {
+    write(&app, |s| s.add_extra(&e))
+}
+
+#[tauri::command]
+fn update_extra(app: AppHandle, e: ExtraCharge) -> Res<()> {
+    write(&app, |s| s.update_extra(&e))
+}
+
+#[tauri::command]
+fn delete_extra(app: AppHandle, id: String) -> Res<()> {
+    write(&app, |s| s.delete_extra(&id))
+}
+
+#[tauri::command]
+fn restore_extra(app: AppHandle, id: String) -> Res<()> {
+    write(&app, |s| s.restore_extra(&id))
+}
+
+#[tauri::command]
 fn add_category(db: State<Db>, name: String, color: String) -> Res<Category> {
     with(&db, |s| s.add_category(&name, &color))
 }
@@ -579,6 +599,10 @@ pub fn run() {
             restore_subscription,
             set_override,
             delete_override,
+            add_extra,
+            update_extra,
+            delete_extra,
+            restore_extra,
             add_category,
             add_payment_method,
             update_category,

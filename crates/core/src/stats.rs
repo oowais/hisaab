@@ -8,7 +8,7 @@ use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
 
 use crate::dates::{add_months_clamped, prev_day};
-use crate::occurrence::{occurrences, scheduled};
+use crate::occurrence::{occurrences, scheduled, with_extras};
 use crate::store::Store;
 use crate::{Charge, ChargeStatus, Period, Result, SubscriptionStatus};
 
@@ -94,6 +94,8 @@ fn would_have(p: &Period, until: NaiveDate, today: NaiveDate) -> Vec<Charge> {
             estimated: false,
             status: if d > today { ChargeStatus::Upcoming } else { ChargeStatus::Paid },
             is_override: false,
+            extra_id: None,
+            label: None,
         })
         .collect()
 }
@@ -105,7 +107,11 @@ impl Store {
         let subs = self.subscriptions()?;
         let this_month = today.with_day(1).unwrap_or(today);
         let end = add_months_clamped(this_month, 2).map(prev_day).unwrap_or(today);
-        let first = subs.iter().flat_map(|s| s.periods.first()).map(|p| p.start_date).min();
+        // A one-time charge may come before the first period.
+        let first = subs
+            .iter()
+            .flat_map(|s| s.periods.first().map(|p| p.start_date).into_iter().chain(s.extras.first().map(|e| e.due_date)))
+            .min();
         let earliest = if months == 0 {
             first
         } else {
@@ -129,7 +135,8 @@ impl Store {
             }
             // History includes archived payments: it happened.
             for s in &subs {
-                for c in occurrences(&s.periods, &s.overrides, start, end, today) {
+                let charges = occurrences(&s.periods, &s.overrides, start, end, today);
+                for c in with_extras(charges, &s.extras, start, end, today) {
                     let Some(v) = self.charge_in(&c, &main)? else {
                         excluded.push(c.currency.clone());
                         continue;

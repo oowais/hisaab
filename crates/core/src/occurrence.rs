@@ -7,13 +7,14 @@
 //! Then overrides apply (skip, move, other amount, settled amount).
 //! Variable bills (estimated amount): a charge without its real figure
 //! costs the average of the last 3 real ones entered before it.
+//! One-time charges (`extra_charge`) join via [`with_extras`].
 
 use std::collections::HashMap;
 
 use chrono::NaiveDate;
 
 use crate::dates::{first_k_near, nth};
-use crate::model::{Charge, ChargeOverride, ChargeStatus, OverrideKind, Period};
+use crate::model::{Charge, ChargeOverride, ChargeStatus, ExtraCharge, OverrideKind, Period};
 
 /// Scheduled dates of `period` within `[from, to]` (before overrides).
 pub fn scheduled(period: &Period, from: NaiveDate, to: NaiveDate) -> Vec<NaiveDate> {
@@ -113,6 +114,37 @@ fn learned_estimate(periods: &[Period], overrides: &[ChargeOverride], c: &Charge
     Some((sum + n / 2) / n)
 }
 
+/// `charges` plus the one-time charges due in `[from, to]`, by date (one
+/// subscription's, or several as long as `charges` are sorted by date).
+pub fn with_extras(
+    mut charges: Vec<Charge>,
+    extras: &[ExtraCharge],
+    from: NaiveDate,
+    to: NaiveDate,
+    today: NaiveDate,
+) -> Vec<Charge> {
+    for e in extras.iter().filter(|e| (from..=to).contains(&e.due_date)) {
+        charges.push(Charge {
+            subscription_id: e.subscription_id.clone(),
+            period_id: String::new(),
+            due_date: e.due_date,
+            scheduled_date: e.due_date,
+            amount_minor: e.amount_minor,
+            currency: e.currency.clone(),
+            settled_amount_minor: None,
+            settled_currency: None,
+            estimated: false,
+            status: if e.due_date > today { ChargeStatus::Upcoming } else { ChargeStatus::Paid },
+            is_override: false,
+            extra_id: Some(e.id.clone()),
+            label: Some(e.label.clone()).filter(|l| !l.is_empty()),
+        });
+    }
+    // Stable: a one-time charge after the scheduled ones of its day.
+    charges.sort_by_key(|c| c.due_date);
+    charges
+}
+
 /// The next charge due on or after `today` (searches 10 years ahead).
 pub fn next_charge(periods: &[Period], overrides: &[ChargeOverride], today: NaiveDate) -> Option<Charge> {
     let to = crate::dates::add_months_clamped(today, 120)?;
@@ -132,6 +164,8 @@ fn charge(p: &Period, due: NaiveDate, scheduled: NaiveDate, today: NaiveDate, o:
         estimated: p.terms.amount_kind == crate::model::AmountKind::Estimated,
         status: if due > today { ChargeStatus::Upcoming } else { ChargeStatus::Paid },
         is_override: o.is_some(),
+        extra_id: None,
+        label: None,
     }
 }
 

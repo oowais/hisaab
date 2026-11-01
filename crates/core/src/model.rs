@@ -194,6 +194,25 @@ pub struct Charge {
     pub estimated: bool,
     pub status: ChargeStatus,
     pub is_override: bool,
+    /// A one-time charge (not from the schedule): its id; `period_id` is empty.
+    #[serde(default)]
+    pub extra_id: Option<String>,
+    /// A one-time charge's note ("Extra member").
+    #[serde(default)]
+    pub label: Option<String>,
+}
+
+/// A one-time charge on a subscription, besides its schedule (a setup fee,
+/// an extra member). Counts as spend; not in the yearly cost, no reminder.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtraCharge {
+    pub id: String,
+    pub subscription_id: String,
+    pub due_date: NaiveDate,
+    pub amount_minor: i64,
+    pub currency: String,
+    pub label: String,
 }
 
 /// A subscription with everything needed to derive its charges.
@@ -205,4 +224,7 @@ pub struct SubscriptionDetail {
     /// By start date.
     pub periods: Vec<Period>,
     pub overrides: Vec<ChargeOverride>,
+    /// One-time charges, by date.
+    #[serde(default)]
+    pub extras: Vec<ExtraCharge>,
 }

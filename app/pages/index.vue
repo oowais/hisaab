@@ -122,14 +122,7 @@ const moving = ref<UpcomingCharge | null>(null)
 async function moveTo(day: string | null) {
   const c = moving.value
   moving.value = null
-  if (!c || !day || day === c.dueDate) return
-  try {
-    await api.setOverride({ periodId: c.periodId, dueDate: c.scheduledDate, kind: 'moved', newDueDate: day })
-    changed()
-    toast.show({ message: `Moved to ${relativeDay(day)}` })
-  } catch (e) {
-    toast.show({ message: friendlyError(e, 'move the charge') })
-  }
+  if (c && day && day !== c.dueDate) await moveCharge(c, day)
 }
 const editing = ref<UpcomingCharge | null>(null)
 // Wide window: Detail opens beside the list (?sub=<id>); else its own screen.
@@ -228,7 +221,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
           <ul class="pane rows list">
             <ChargeRow
               v-for="c in g.rows"
-              :key="`${c.periodId}-${c.scheduledDate}`"
+              :key="chargeKey(c)"
               :charge="c"
               :class="{ selected: wide && c.subscriptionId === selected }"
               :sub="byId.get(c.subscriptionId)!"
@@ -280,7 +273,15 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 
     <button v-if="!empty && !wide" class="fab ink" aria-label="Add a payment" @click="adding = true"><Plus :size="26" /></button>
     <QuickAdd v-if="adding" :share="shared" @close="((adding = false), (shared = null))" />
-    <ChargeSheet v-if="editing" :charge="editing" :name="byId.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
+    <ExtraSheet
+      v-if="editing?.extraId"
+      :subscription-id="editing.subscriptionId"
+      :name="byId.get(editing.subscriptionId)?.name ?? ''"
+      :currency="editing.currency"
+      :extra="extraOf(editing)"
+      @close="editing = null"
+    />
+    <ChargeSheet v-else-if="editing" :charge="editing" :name="byId.get(editing.subscriptionId)?.name ?? ''" @close="editing = null" />
     <DateSheet
       v-if="moving"
       :model-value="moving.dueDate"

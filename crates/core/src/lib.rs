@@ -27,7 +27,7 @@ pub use reminders::{snooze_picks, Fired, Reminder, SnoozePick};
 pub use stats::{MonthSpend, Slice, Stats};
 pub use store::{Settings, Store};
 pub use peers::{Peer, SyncMode, SyncSettings};
-pub use subscriptions::{NewOverride, NewSubscription};
+pub use subscriptions::{NewExtraCharge, NewOverride, NewSubscription};
 pub use sync::{MergeOutcome, SyncChange};
 
 #[derive(Debug, thiserror::Error)]
