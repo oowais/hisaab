@@ -291,8 +291,9 @@ Milestone 7 checklist:
 Milestone 8 so far:
 
 - [x] Trial countdown (Nov 1, 2026): "Free trials" on Upcoming (soonest first), a trial card in Detail (days left, what follows, Cancel at <site>); 15 templates carry their cancel page; links open in the browser (`open_url`: `xdg-open` / `explorer` on desktop, an intent on Android; before, Detail's link did nothing)
+- [x] Monthly budget (Nov 1, 2026): set in Settings → Money (synced, main currency; follows a main-currency change at the latest rates); bar on Upcoming (orange from 90%, red over), a note in Quick add when a new payment goes over, a dashed line and "over in N months" on Stats
 
-**Next:** milestone 8 — later: shared/split cost, budget cap, CSV/Wallos import. Also open from earlier milestones: managing templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
+**Next:** milestone 8 — later: shared/split cost, CSV/Wallos import. Also open from earlier milestones: managing templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
 
 ### Backlog (Befikr features not copied yet)
 

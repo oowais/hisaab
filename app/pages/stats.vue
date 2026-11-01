@@ -58,9 +58,11 @@ const BAR = 18
 const GAP = 8
 const chart = computed(() => {
   const ms = st.value?.months ?? []
-  const max = Math.max(1, ...ms.map((m) => m.total))
+  const budget = st.value?.monthlyBudget ?? null
+  const max = Math.max(1, budget ?? 0, ...ms.map((m) => m.total))
   return {
     width: ms.length * (BAR + GAP) - GAP,
+    budgetY: budget ? H - (budget / max) * H : null,
     bars: ms.map((m, i) => {
       let y = H
       const segs = m.byCategory.map((s) => {
@@ -79,6 +81,12 @@ const monthName = (month: string) => new Date(`${month}-01T00:00`).toLocaleDateS
 const pickedMonth = computed(() => st.value?.months.find((m) => m.month === picked.value) ?? null)
 // The newest month that's done: shown when nothing is picked.
 const shownMonth = computed(() => pickedMonth.value ?? [...(st.value?.months ?? [])].reverse().find((m) => !m.forecast) ?? null)
+// Finished months that went over the budget.
+const doneMonths = computed(() => (st.value?.months ?? []).filter((m) => !m.forecast).length)
+const overMonths = computed(() => {
+  const b = st.value?.monthlyBudget
+  return b ? (st.value?.months ?? []).filter((m) => !m.forecast && m.total > b).length : 0
+})
 const scroller = ref<HTMLElement>()
 watch(chart, () => nextTick(() => scroller.value && (scroller.value.scrollLeft = scroller.value.scrollWidth)))
 
@@ -164,8 +172,13 @@ const splits = computed<Split[]>(() => {
               <text :x="b.x + BAR / 2" :y="H + 14" text-anchor="middle" class="axis">{{ b.label }}</text>
               <text v-if="b.year" :x="b.x" :y="H + 30" class="axis year">{{ b.year }}</text>
             </g>
+            <line v-if="chart.budgetY != null" x1="0" :x2="chart.width" :y1="chart.budgetY" :y2="chart.budgetY" class="budget-line" />
           </svg>
         </div>
+        <p v-if="st.monthlyBudget" class="muted small budget-note">
+          <span class="dash" /> Budget {{ money(st.monthlyBudget)
+          }}<template v-if="overMonths"> · over in {{ overMonths }} of the last {{ doneMonths }} months</template>
+        </p>
         <ul v-if="shownMonth?.byCategory.length" class="legend">
           <li v-for="s in shownMonth.byCategory" :key="s.key ?? 'none'">
             <span class="swatch" :style="{ background: colorOf(s.key) }" />
@@ -276,6 +289,22 @@ svg {
 .axis {
   font-size: 10px;
   fill: var(--muted);
+}
+.budget-line {
+  stroke: var(--red);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  pointer-events: none;
+}
+.budget-note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash {
+  width: 14px;
+  border-top: 1.5px dashed var(--red);
 }
 .legend {
   list-style: none;

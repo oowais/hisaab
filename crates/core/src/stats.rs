@@ -50,6 +50,8 @@ pub struct Stats {
     pub excluded_currencies: Vec<String>,
     /// First day a rate is needed (fetch the history's rates from it).
     pub from: Option<NaiveDate>,
+    /// The monthly budget (Settings), in main: a line on the chart.
+    pub monthly_budget: Option<i64>,
 }
 
 fn add(slices: &mut Vec<Slice>, key: Option<String>, amount: i64) {
@@ -188,6 +190,7 @@ impl Store {
             saved,
             excluded_currencies: excluded,
             from,
+            monthly_budget: self.settings()?.monthly_budget,
         })
     }
 }

@@ -19,6 +19,9 @@ pub struct Settings {
     pub last_currency: Option<String>,
     /// Reminders show at this local time, "HH:MM".
     pub reminder_time: String,
+    /// What payments should cost a month at most, in the main currency
+    /// (minor units). None = no budget.
+    pub monthly_budget: Option<i64>,
 }
 
 pub struct Store {
@@ -112,6 +115,7 @@ impl Store {
                 .setting("last_currency")?
                 .and_then(|v| v.as_str().map(String::from))
                 .filter(|c| crate::currency::is_currency_code(c)),
+            monthly_budget: self.setting("monthly_budget")?.and_then(|v| v.as_i64()).filter(|n| *n > 0),
         })
     }
 
@@ -125,9 +129,21 @@ impl Store {
     }
 
     /// Change one setting, validated (`main_currency`, `default_remind_days`,
-    /// `last_currency`, `reminder_time`).
+    /// `last_currency`, `reminder_time`, `monthly_budget`: minor units of the
+    /// main currency, null = none). A new main currency takes the budget
+    /// along, converted at the latest rates.
     pub fn update_setting(&mut self, key: &str, value: &serde_json::Value) -> Result<()> {
+        if key == "main_currency" {
+            if let (Some(budget), Some(to)) = (self.settings()?.monthly_budget, value.as_str()) {
+                let from = self.main_currency()?;
+                if crate::currency::is_currency_code(to) && to != from {
+                    let moved = self.amount_in(budget, &from, to)?;
+                    self.set_setting("monthly_budget", &moved.map_or(serde_json::Value::Null, Into::into))?;
+                }
+            }
+        }
         let ok = match key {
+            "monthly_budget" => value.is_null() || value.as_i64().is_some_and(|n| n > 0),
             "main_currency" | "last_currency" => value.as_str().is_some_and(crate::currency::is_currency_code),
             "reminder_time" => value.as_str().is_some_and(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").is_ok()),
             "default_remind_days" => value.as_u64().is_some_and(|n| n <= 60),

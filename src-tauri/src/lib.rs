@@ -249,6 +249,12 @@ fn add_payment_method(db: State<Db>, name: String) -> Res<PaymentMethod> {
     with(&db, |s| s.add_payment_method(&name))
 }
 
+/// A price's cost a month in the main currency (Quick add's budget note).
+#[tauri::command]
+fn monthly_in_main(db: State<Db>, amount_minor: i64, currency: String, every_n: u32, unit: Unit) -> Res<Option<i64>> {
+    with(&db, |s| s.monthly_in_main(amount_minor, &currency, every_n, unit))
+}
+
 #[tauri::command]
 fn update_setting(app: AppHandle, key: String, value: serde_json::Value) -> Res<()> {
     write(&app, |s| s.update_setting(&key, &value))
@@ -576,6 +582,7 @@ pub fn run() {
             delete_payment_method,
             restore_payment_method,
             update_setting,
+            monthly_in_main,
             refresh_rates,
             ensure_rates,
             snooze_picks,

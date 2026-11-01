@@ -61,6 +61,8 @@ pub struct Overview {
     pub excluded_currencies: Vec<String>,
     pub rates_date: Option<NaiveDate>,
     pub rates_stale: bool,
+    /// The monthly budget (Settings), in main.
+    pub monthly_budget: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -180,6 +182,7 @@ impl Store {
             excluded_currencies: excluded,
             rates_date: self.latest_rates_date()?,
             rates_stale: self.rates_stale(today)?,
+            monthly_budget: self.settings()?.monthly_budget,
         })
     }
 
@@ -290,6 +293,14 @@ impl Store {
             })
             .collect();
         Ok(Widget { main_currency: o.main_currency, monthly_total: (o.yearly_total + 6) / 12, today, charges })
+    }
+
+    /// What `amount_minor` of `currency` every `every_n` `unit`s costs a
+    /// month in the main currency, at the latest rates (Quick add's budget
+    /// note). None without a rate.
+    pub fn monthly_in_main(&self, amount_minor: i64, currency: &str, every_n: u32, unit: Unit) -> Result<Option<i64>> {
+        let yearly = (amount_minor as f64 * per_year(every_n, unit)).round() as i64;
+        Ok(self.amount_in(yearly, currency, &self.main_currency()?)?.map(|y| (y + 6) / 12))
     }
 
     /// Archived subscriptions, by name (the Archive screen).

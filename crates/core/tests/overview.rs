@@ -76,6 +76,21 @@ fn settings_defaults_and_validation() {
     assert!(s.update_setting("nope", &json!(1)).is_err());
     let st = s.settings().unwrap();
     assert_eq!((st.main_currency.as_str(), st.default_remind_days), ("USD", 5));
+    assert_eq!(st.monthly_budget, None);
+}
+
+#[test]
+fn budget_follows_the_main_currency() {
+    let mut s = store(); // 1 EUR = 1.25 USD
+    s.update_setting("monthly_budget", &json!(10000)).unwrap();
+    assert!(s.update_setting("monthly_budget", &json!(-5)).is_err());
+    s.update_setting("main_currency", &json!("USD")).unwrap();
+    assert_eq!(s.settings().unwrap().monthly_budget, Some(12500));
+    s.update_setting("monthly_budget", &json!(null)).unwrap();
+    assert_eq!(s.settings().unwrap().monthly_budget, None);
+    // $12/year in main (USD) a month: $1.
+    assert_eq!(s.monthly_in_main(1200, "USD", 1, Unit::Year).unwrap(), Some(100));
+    assert_eq!(s.monthly_in_main(1000, "EUR", 1, Unit::Month).unwrap(), Some(1250));
 }
 
 #[test]

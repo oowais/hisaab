@@ -74,6 +74,28 @@ const INTERVALS: { n: number; unit: Unit }[] = [
 const custom = ref(false)
 const startLabel = computed(() => (start.value === today ? 'today' : relativeDay(start.value)))
 
+// Monthly budget (Settings): say so when this one takes you over it.
+const { data: overview } = useOverview()
+const addsMonthly = ref<number | null>(null)
+let budgetTimer: ReturnType<typeof setTimeout> | undefined
+watch([amountText, currency, everyN, unit], () => {
+  clearTimeout(budgetTimer)
+  addsMonthly.value = null
+  const amount = parseAmount(amountText.value, currency.value)
+  if (!overview.value?.monthlyBudget || !amount || everyN.value < 1) return
+  budgetTimer = setTimeout(async () => {
+    addsMonthly.value = await api.monthlyInMain(amount, currency.value, everyN.value, unit.value).catch(() => null)
+  }, 250)
+})
+const overBudget = computed(() => {
+  const o = overview.value
+  if (!o?.monthlyBudget || addsMonthly.value == null) return ''
+  const after = Math.round(o.yearlyTotal / 12) + addsMonthly.value
+  if (after <= o.monthlyBudget) return ''
+  const money = (n: number) => formatMoney(n, o.mainCurrency, { compact: true })
+  return `This takes you to ${money(after)} a month, ${money(after - o.monthlyBudget)} over your budget.`
+})
+
 // ---- More
 const more = ref(false)
 const categories = ref<Category[]>([])
@@ -220,6 +242,7 @@ async function save() {
           <button type="button" class="field currency" aria-label="Currency" @click="pickingCurrency = true">{{ currency }}</button>
         </div>
 
+        <p v-if="overBudget" class="over small">{{ overBudget }}</p>
         <p class="sentence">
           <button type="button" class="word" :aria-expanded="pickingInterval" @click="pickingInterval = !pickingInterval">
             {{ intervalText(everyN, unit) }}</button
@@ -349,6 +372,10 @@ async function save() {
 </template>
 
 <style scoped>
+.over {
+  margin: 6px 0 0;
+  color: var(--orange);
+}
 .backdrop {
   position: fixed;
   inset: 0;

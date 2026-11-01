@@ -43,6 +43,19 @@ const shown = (s: SubscriptionView) => filter.value === 'all' || s.kind === filt
 const byId = computed(() => new Map(subs.value.map((s) => [s.id, s])))
 
 // ---- Header total: tap cycles month → year → day
+// Monthly budget (Settings): how much of it the running payments use.
+const budget = computed(() => {
+  const d = data.value
+  if (!d?.monthlyBudget) return null
+  const monthly = Math.round(d.yearlyTotal / 12)
+  const share = monthly / d.monthlyBudget
+  const money = (n: number) => formatMoney(n, d.mainCurrency, { compact: true })
+  const text =
+    monthly > d.monthlyBudget
+      ? `${money(monthly - d.monthlyBudget)} over your ${money(d.monthlyBudget)} budget`
+      : `${Math.round(share * 100)}% of your ${money(d.monthlyBudget)} budget`
+  return { share, text, level: share > 1 ? 'over' : share >= 0.9 ? 'near' : 'ok' }
+})
 const SPANS = [
   { key: 'month', label: 'month', per: 1 / 12 },
   { key: 'year', label: 'year', per: 1 },
@@ -153,6 +166,10 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
           <span class="amount">{{ total }}</span
           ><span class="muted"> / {{ SPANS[span]!.label }}</span>
         </button>
+        <div v-if="budget" class="budget" :class="budget.level">
+          <span class="track"><span class="fill" :style="{ width: `${Math.min(1, budget.share) * 100}%` }" /></span>
+          <span class="small">{{ budget.text }}</span>
+        </div>
         <p v-if="data.excludedCurrencies.length || (data.ratesStale && data.ratesDate)" class="note muted small">
           <TriangleAlert :size="14" />
           <span v-if="data.excludedCurrencies.length">{{ data.excludedCurrencies.join(', ') }} not in totals (no exchange rate)</span>
@@ -406,5 +423,36 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   flex-direction: column;
   gap: 2px;
   text-align: left;
+}
+.budget {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 14px;
+  color: var(--muted);
+}
+.budget .track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.budget .fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--green);
+}
+.budget.near .fill {
+  background: var(--orange);
+}
+.budget.near {
+  color: var(--orange);
+}
+.budget.over .fill {
+  background: var(--red);
+}
+.budget.over {
+  color: var(--red);
 }
 </style>

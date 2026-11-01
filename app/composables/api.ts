@@ -76,6 +76,7 @@ export type Overview = {
   excludedCurrencies: string[]
   ratesDate: string | null
   ratesStale: boolean
+  monthlyBudget: number | null
 }
 
 export type TimelineLane = SubscriptionView & { periods: Period[] }
@@ -94,7 +95,14 @@ export type Detail = SubscriptionView & {
 
 export type Category = { id: string; name: string; color: string; sort: number }
 export type PaymentMethod = { id: string; name: string }
-export type Settings = { mainCurrency: string; defaultRemindDays: number; lastCurrency: string | null; reminderTime: string }
+export type Settings = {
+  mainCurrency: string
+  defaultRemindDays: number
+  lastCurrency: string | null
+  reminderTime: string
+  /** Most payments should cost a month, minor units of the main currency; null = none. */
+  monthlyBudget: number | null
+}
 export type SnoozePick = { label: string; atMs: number }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 /** Android: what reminders need (desktop: none of this). */
@@ -162,6 +170,7 @@ export type Stats = {
   saved: number
   excludedCurrencies: string[]
   from: string | null
+  monthlyBudget: number | null
 }
 
 export type NewSubscription = {
@@ -217,6 +226,8 @@ export const api = {
   deletePaymentMethod: (id: string) => invoke<string[]>('delete_payment_method', { id }),
   restorePaymentMethod: (id: string, subs: string[]) => invoke<void>('restore_payment_method', { id, subs }),
   updateSetting: (key: string, value: unknown) => invoke<void>('update_setting', { key, value }),
+  monthlyInMain: (amountMinor: number, currency: string, everyN: number, unit: Unit) =>
+    invoke<number | null>('monthly_in_main', { amountMinor, currency, everyN, unit }),
   snoozePicks: () => invoke<SnoozePick[]>('snooze_picks'),
   snooze: (id: string, untilMs: number) => invoke<void>('snooze', { id, untilMs }),
   reminderAt: (day: string) => invoke<number>('reminder_at', { day }),

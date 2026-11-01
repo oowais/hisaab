@@ -12,6 +12,7 @@ import {
   Coins,
   Download,
   FolderSync,
+  Gauge,
   Power,
   RefreshCw,
   Tags,
@@ -62,7 +63,7 @@ const currencyName = computed(() => {
   const c = settings.value?.mainCurrency
   return c ? (new Intl.DisplayNames(undefined, { type: 'currency' }).of(c) ?? c) : ''
 })
-async function set(key: 'main_currency' | 'default_remind_days' | 'reminder_time', value: string | number) {
+async function set(key: 'main_currency' | 'default_remind_days' | 'reminder_time' | 'monthly_budget', value: string | number | null) {
   try {
     await api.updateSetting(key, value)
     settings.value = await api.settings()
@@ -71,6 +72,26 @@ async function set(key: 'main_currency' | 'default_remind_days' | 'reminder_time
   } catch (e) {
     error.value = friendlyError(e, 'change the setting')
   }
+}
+// ---- Monthly budget: typed in the main currency; empty = none.
+const editingBudget = ref(false)
+const budgetText = ref('')
+const budgetInput = ref<HTMLInputElement>()
+function editBudget() {
+  const s = settings.value
+  if (!s) return
+  const d = minorDigits(s.mainCurrency)
+  budgetText.value = s.monthlyBudget ? (s.monthlyBudget / 10 ** d).toFixed(d) : ''
+  editingBudget.value = true
+  nextTick(() => budgetInput.value?.focus())
+}
+async function saveBudget() {
+  if (!editingBudget.value || !settings.value) return
+  editingBudget.value = false
+  const text = budgetText.value.trim()
+  const amount = text ? parseAmount(text, settings.value.mainCurrency) : null
+  if (text && !amount) return void (error.value = 'Enter the budget as an amount, e.g. 150.')
+  if (amount !== settings.value.monthlyBudget) await set('monthly_budget', amount)
 }
 const REMIND = [0, 1, 2, 3, 5, 7, 14]
 const pickingTime = ref(false)
@@ -125,6 +146,28 @@ async function setDesktop(f: () => Promise<void>) {
           </span>
           <span class="muted">{{ settings.mainCurrency }} · {{ currencyName }}</span>
         </button>
+        <div class="item">
+          <Gauge :size="20" class="muted" />
+          <span class="flex stack">
+            <span>Monthly budget</span>
+            <span class="muted small">Upcoming shows how much of it you use</span>
+          </span>
+          <form v-if="editingBudget" class="budget" @submit.prevent="saveBudget">
+            <input
+              ref="budgetInput"
+              v-model="budgetText"
+              class="field"
+              inputmode="decimal"
+              placeholder="None"
+              aria-label="Monthly budget"
+              enterkeyhint="done"
+              @blur="saveBudget"
+            />
+          </form>
+          <button v-else class="chip" :class="{ chosen: settings.monthlyBudget }" @click="editBudget">
+            {{ settings.monthlyBudget ? formatMoney(settings.monthlyBudget, settings.mainCurrency, { compact: true }) : 'None' }}
+          </button>
+        </div>
       </div>
 
       <h2 class="section-title">Reminders</h2>
@@ -314,6 +357,10 @@ async function setDesktop(f: () => Promise<void>) {
 </template>
 
 <style scoped>
+.budget .field {
+  width: 7.5rem;
+  text-align: right;
+}
 a.item {
   color: inherit;
   text-decoration: none;
