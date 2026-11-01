@@ -254,3 +254,8 @@ export function fallbackColor(name: string): string {
   // Only the first 8: adding swatches must not recolour existing tiles.
   return PALETTE[h % 8]!
 }
+
+/** A colour for a new payment that has no template: one of the first 8, at random. */
+export function randomColor(): string {
+  return PALETTE[Math.floor(Math.random() * 8)]!
+}

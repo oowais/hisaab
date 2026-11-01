@@ -34,15 +34,16 @@ onMounted(async () => {
   if (s && !template.value?.currency) currency.value = s.lastCurrency ?? s.mainCurrency
 })
 
-// The tile: the template's, until changed in the icon sheet.
+// The tile: the template's (or a random colour), until changed in the icon sheet.
 const icon = ref<string | null>(null)
 const color = ref<string | null>(null)
+const newColor = randomColor()
 const pickingIcon = ref(false)
 
 function choose(t: Template | null) {
   template.value = t
   icon.value = t?.icon ?? null
-  color.value = t?.color ?? null
+  color.value = t?.color ?? newColor
   name.value = t?.name ?? query.value.trim()
   if (t) {
     kind.value = t.kind
@@ -188,7 +189,7 @@ async function save() {
           </li>
           <li v-if="query.trim() && !matches.some((t) => t.name.toLowerCase() === query.trim().toLowerCase())">
             <button type="button" class="match" @click="choose(null)">
-              <SubIcon :icon="null" :color="null" :name="query" :size="32" />
+              <SubIcon :icon="null" :color="newColor" :name="query" :size="32" />
               <span>Add “{{ query.trim() }}”</span>
             </button>
           </li>
