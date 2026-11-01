@@ -301,6 +301,7 @@ Milestone 8 so far:
 - [x] Home filter (Nov 1, 2026): filter button (dot when on) opens a sheet: subscriptions / bills (when both) and any categories ("No category" too), each with its yearly cost; applies as you tap, remembered on the device; the active filter shows as a chip under the total (tap to change, × to clear). Totals follow the filter
 - [x] Home cards (Nov 1, 2026): each payment its own card tinted with its colour and outlined in it (`.tint-card`, main.css); paused mostly gray, ended and archived gray and faint
 - [x] Stats paid-only (Nov 1, 2026): only charges due up to today: paid per month (this month "so far", no forecast bars), paid this month / this year / in the range, and the splits by category, payment method and currency of what was paid in the range (were the running payments' yearly cost, e.g. €61 × 12). The monthly and yearly cost stays on Home
+- [x] Change billing day (Nov 1, 2026): Detail action for running payments; pick the next charge's day (today or later); later charges follow it, earlier ones stay (core `change_billing_day`: split at tomorrow, new anchor; scheduled price changes on the old day follow; refused while paused or in a free trial)
 
 - [ ] CSV/Wallos import: skipped for now (Nov 1, 2026), by choice
 

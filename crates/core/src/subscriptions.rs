@@ -697,6 +697,38 @@ impl Store {
         })
     }
 
+    /// Charges from `next` on fall on its day (every `every_n unit` from it);
+    /// earlier ones stay as they were. Later scheduled price changes that
+    /// followed the old day follow the new one. `next`: today or later.
+    pub fn change_billing_day(&mut self, id: &str, next: NaiveDate, today: NaiveDate) -> Result<SubscriptionDetail> {
+        if next < today {
+            return Err(Error::Invalid("pick today or a later day".into()));
+        }
+        // From tomorrow (today's charge, if any, already happened), or from
+        // the new day itself when that's today.
+        let from = next.min(next_day(today));
+        self.edit_periods(id, |ps| {
+            let i = covering(ps, from)?;
+            match ps[i].status {
+                PeriodStatus::Paused => return Err(Error::Invalid("resume it first".into())),
+                PeriodStatus::Trial if !ps[i].charges() => {
+                    return Err(Error::Invalid("change it once the free trial is over".into()))
+                }
+                _ => {}
+            }
+            let old = ps[i].anchor_date;
+            let j = split(ps, i, from);
+            ps[j].anchor_date = next;
+            for p in ps.iter_mut().skip(j + 1) {
+                if p.status != PeriodStatus::Active || p.anchor_date != old {
+                    break;
+                }
+                p.anchor_date = next;
+            }
+            Ok(())
+        })
+    }
+
     /// Pause from `from`; with `resume_on`, charges start again that day
     /// (anchored on it). Without one, the pause is open-ended and later
     /// scheduled changes are dropped.

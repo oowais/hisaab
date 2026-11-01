@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The status actions of a subscription, each asking only what it needs:
-// price change (amount, from when, plan), pause (from, optional resume),
+// price change (amount, from when, plan), billing day (the next charge's
+// day; later ones follow it, earlier ones stay), pause (from, optional resume),
 // resume, cancel (ends on), restart, trial → paid. Dates default to what
 // usually fits (next charge, end of the running cycle, today).
 import { X } from 'lucide-vue-next'
@@ -13,6 +14,7 @@ useBackClose(() => emit('close'))
 const today = todayIso()
 const TITLES: Record<Action, string> = {
   price: 'Change price',
+  billing: 'Change billing day',
   pause: 'Pause',
   resume: 'Resume',
   cancel: 'Cancel',
@@ -45,7 +47,7 @@ const resumeOn = ref<string | null>(null)
 const defaults = ref<{ nextCharge: string | null; cycleEnd: string } | null>(null)
 onMounted(async () => {
   defaults.value = await api.defaults(props.sub.id, today).catch(() => null)
-  if (props.action === 'price' && defaults.value?.nextCharge) day.value = defaults.value.nextCharge
+  if ((props.action === 'price' || props.action === 'billing') && defaults.value?.nextCharge) day.value = defaults.value.nextCharge
   if (props.action === 'cancel' && defaults.value) day.value = defaults.value.cycleEnd
 })
 const picks = computed(() => {
@@ -59,6 +61,7 @@ const dayLabel = computed(
   () =>
     ({
       price: 'From',
+      billing: 'Next charge on',
       pause: 'Pause from',
       resume: 'First charge again',
       cancel: 'Ends on',
@@ -94,6 +97,9 @@ async function run() {
       case 'price':
         await api.changeTerms(id, day.value, terms!)
         break
+      case 'billing':
+        await api.changeBillingDay(id, day.value, today)
+        break
       case 'pause':
         await api.pause(id, day.value, resumeOn.value)
         break
@@ -117,6 +123,7 @@ async function run() {
       'done',
       {
         price: `New price from ${on}`,
+        billing: `Billing day changed: next charge ${when}`,
         pause: `Paused from ${on}`,
         resume: `Resumes ${when}`,
         cancel: `Ends ${when}`,
@@ -158,6 +165,7 @@ async function run() {
           >{{ shortDay(day) }} <span class="muted">· {{ relativeDay(day, today) }}</span></span
         >
       </button>
+      <p v-if="action === 'billing'" class="muted small hint">Charges from this day on follow it. Charges before it stay as they were.</p>
       <button v-if="action === 'pause'" type="button" class="pick" @click="picking = 'resume'">
         <span class="muted small">Resume</span>
         <span>{{ resumeOn ? shortDay(resumeOn) : 'When I say so' }}</span>
@@ -167,7 +175,14 @@ async function run() {
       <button type="submit" class="btn primary" :class="{ danger: action === 'cancel' }" :disabled="busy">{{ TITLES[action] }}</button>
     </form>
 
-    <DateSheet v-if="picking === 'day'" v-model="day" :title="dayLabel" :picks="picks" @close="picking = null" />
+    <DateSheet
+      v-if="picking === 'day'"
+      v-model="day"
+      :title="dayLabel"
+      :picks="picks"
+      :min="action === 'billing' ? today : null"
+      @close="picking = null"
+    />
     <DateSheet
       v-if="picking === 'resume'"
       v-model="resumeOn"
@@ -182,6 +197,9 @@ async function run() {
 </template>
 
 <style scoped>
+.hint {
+  margin: -4px 4px 0;
+}
 .backdrop {
   position: fixed;
   inset: 0;

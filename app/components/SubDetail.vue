@@ -50,6 +50,7 @@ const ACTIONS: Record<string, { action: Action | 'archive'; label: string }[]> =
   active: [
     { action: 'pause', label: 'Pause' },
     { action: 'price', label: 'Change price' },
+    { action: 'billing', label: 'Change billing day' },
     { action: 'cancel', label: 'Cancel' },
   ],
   paused: [

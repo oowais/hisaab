@@ -9,7 +9,7 @@ export type Unit = 'day' | 'week' | 'month' | 'year'
 export type PeriodStatus = 'trial' | 'active' | 'paused'
 export type Status = 'trial' | 'active' | 'paused' | 'ended'
 export type OverrideKind = 'skipped' | 'moved' | 'amount_changed' | 'settled'
-export type Action = 'price' | 'pause' | 'resume' | 'cancel' | 'restart' | 'convert'
+export type Action = 'price' | 'billing' | 'pause' | 'resume' | 'cancel' | 'restart' | 'convert'
 
 export type Terms = {
   amountMinor: number
@@ -228,6 +228,7 @@ export const api = {
   addSubscription: (n: NewSubscription) => invoke<string>('add_subscription', { new: n }),
   updateSubscription: (id: string, fields: SubscriptionFields) => invoke<void>('update_subscription', { id, fields }),
   changeTerms: (id: string, from: string, terms: Terms) => invoke<void>('change_terms', { id, from, terms }),
+  changeBillingDay: (id: string, next: string, today: string) => invoke<void>('change_billing_day', { id, next, today }),
   pause: (id: string, from: string, resumeOn: string | null) => invoke<void>('pause', { id, from, resumeOn }),
   resume: (id: string, on: string, anchor: string | null = null) => invoke<void>('resume', { id, on, anchor }),
   cancel: (id: string, endsOn: string) => invoke<void>('cancel', { id, endsOn }),

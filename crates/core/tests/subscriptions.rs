@@ -286,3 +286,36 @@ fn pre_made_category_picked_on_two_devices_is_one_after_sync() {
     b.merge(&a.changes_since(0, 10_000, None).unwrap()).unwrap();
     assert_eq!(b.categories().unwrap().len(), 1);
 }
+
+#[test]
+fn change_billing_day_moves_later_charges_only() {
+    let mut s = Store::open_in_memory().unwrap();
+    let id = add(&mut s, "Gym", monthly(3000), "2026-01-15", None).subscription.id;
+    // A price change already scheduled for March follows the new day too.
+    s.change_terms(&id, d("2026-03-15"), &monthly(3500)).unwrap();
+    s.change_billing_day(&id, d("2026-02-01"), d("2026-01-20")).unwrap();
+    let cs = s.charges(d("2026-01-01"), d("2026-04-30"), d("2026-01-20")).unwrap();
+    let got: Vec<_> = cs.iter().map(|c| (c.due_date.to_string(), c.amount_minor)).collect();
+    assert_eq!(
+        got,
+        [
+            ("2026-01-15".into(), 3000),
+            ("2026-02-01".into(), 3000),
+            ("2026-03-01".into(), 3000),
+            ("2026-04-01".into(), 3500),
+        ]
+    );
+}
+
+#[test]
+fn change_billing_day_checks() {
+    let mut s = Store::open_in_memory().unwrap();
+    let id = add(&mut s, "Gym", monthly(3000), "2026-01-15", None).subscription.id;
+    assert!(s.change_billing_day(&id, d("2026-01-10"), d("2026-01-20")).is_err(), "in the past");
+    s.pause(&id, d("2026-02-01"), None).unwrap();
+    assert!(s.change_billing_day(&id, d("2026-02-10"), d("2026-02-05")).is_err(), "paused");
+    // Today itself: the new day starts now.
+    let id2 = add(&mut s, "Rent", monthly(90000), "2026-01-03", None).subscription.id;
+    s.change_billing_day(&id2, d("2026-01-20"), d("2026-01-20")).unwrap();
+    assert_eq!(s.next_charge(&id2, d("2026-01-20")).unwrap().map(|c| c.due_date), Some(d("2026-01-20")));
+}
