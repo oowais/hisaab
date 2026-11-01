@@ -28,6 +28,19 @@ export function relativeDay(s: string, today = todayIso()): string {
   return shortDay(s, today)
 }
 
+/** How far a charge is: "today", "tomorrow", "in 8 days", "in 2 months"
+ *  (from 45 days on), "3 days ago". Home's rows. */
+export function dueIn(s: string, today = todayIso()): string {
+  const n = daysBetween(today, s)
+  if (n === 0) return 'today'
+  if (n === 1) return 'tomorrow'
+  if (n === -1) return 'yesterday'
+  if (n < 0) return `${-n} days ago`
+  if (n < 45) return `in ${n} days`
+  const months = Math.round(n / 30.44)
+  return months < 12 ? `in ${months} months` : `in ${Math.round(n / 365.25) === 1 ? 'a year' : `${Math.round(n / 365.25)} years`}`
+}
+
 /** "Mon 12 Jan", with the year when it isn't this year. */
 export function shortDay(s: string, today = todayIso()): string {
   const d = parseDay(s)

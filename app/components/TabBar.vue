@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // Main screens. Phone: a bar at the bottom; wide windows: a rail on the left.
 // Hidden on pages that aren't tabs. Settings shows a dot when an update is ready.
-import { CalendarClock, CalendarDays, ChartColumn, ChartGantt, Settings } from 'lucide-vue-next'
+import { CalendarDays, ChartColumn, ChartGantt, House, Settings } from 'lucide-vue-next'
 
 const TABS = [
-  { to: '/', label: 'Upcoming', icon: CalendarClock },
+  { to: '/', label: 'Home', icon: House },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/timeline', label: 'Timeline', icon: ChartGantt },
   { to: '/stats', label: 'Stats', icon: ChartColumn },

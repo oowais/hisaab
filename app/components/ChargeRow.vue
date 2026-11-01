@@ -7,7 +7,7 @@ import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
 const props = defineProps<{ charge: UpcomingCharge; sub: SubscriptionView; main: string; today: string }>()
 const emit = defineEmits<{ open: []; move: []; menu: [e: MouseEvent] }>()
 
-const when = computed(() => relativeDay(props.charge.dueDate, props.today))
+const when = computed(() => dueIn(props.charge.dueDate, props.today))
 const original = computed(() => formatMoney(props.charge.amountMinor, props.charge.currency))
 // Shared: your part of it (what the totals count).
 const mine = computed(() =>

@@ -1,8 +1,11 @@
 <script setup lang="ts">
-// Upcoming (home): what's charged next, grouped by when, and what it all
-// costs per month / year / day in the main currency.
+// Home: every running payment once, with its next charge (soonest first, or
+// another sort), free trials, paused and ended ones; and what it all costs
+// per month / year / day in the main currency.
 import {
   Archive,
+  ArrowDownUp,
+  Check,
   CalendarClock,
   ChevronDown,
   ChevronUp,
@@ -80,27 +83,63 @@ const total = computed(() => {
   return formatMoney(Math.round(yearly * SPANS[span.value]!.per), d.mainCurrency)
 })
 
-// ---- Groups: Today · This week · Later this month · Next month
-const groups = computed(() => {
-  const d = data.value
-  if (!d) return []
-  const t = today.value
-  const dow = (parseDay(t).getDay() + 6) % 7 // Monday 0
-  const weekEnd = addDays(t, 6 - dow)
-  const monthKey = t.slice(0, 7)
-  const out: { id: string; title: string; rows: UpcomingCharge[] }[] = [
-    { id: 'today', title: 'Today', rows: [] },
-    { id: 'week', title: 'This week', rows: [] },
-    { id: 'month', title: 'Later this month', rows: [] },
-    { id: 'next', title: 'Next month', rows: [] },
-  ]
-  for (const c of d.upcoming) {
-    const s = byId.value.get(c.subscriptionId)
-    if (!s || !shown(s)) continue
-    const g = c.dueDate === t ? 0 : c.dueDate <= weekEnd ? 1 : c.dueDate.slice(0, 7) === monthKey ? 2 : 3
-    out[g]!.rows.push(c)
+// ---- One row per payment: its nearest charge from today on (one-time
+// charges too); once a charge's day has passed, the next one takes over.
+const nextBySub = computed(() => {
+  const m = new Map<string, UpcomingCharge>()
+  for (const c of data.value?.upcoming ?? []) if (!m.has(c.subscriptionId)) m.set(c.subscriptionId, c)
+  return m
+})
+type Sort = 'next' | 'name' | 'cost' | 'cheap' | 'category'
+const SORTS: { key: Sort; label: string }[] = [
+  { key: 'next', label: 'Next charge' },
+  { key: 'name', label: 'Name' },
+  { key: 'cost', label: 'Most expensive' },
+  { key: 'cheap', label: 'Cheapest' },
+  { key: 'category', label: 'Category' },
+]
+const SORT_KEY = 'hisaab.homeSort'
+const sort = ref<Sort>('next')
+try {
+  const saved = localStorage.getItem(SORT_KEY) as Sort | null
+  if (saved && SORTS.some((x) => x.key === saved)) sort.value = saved
+} catch {}
+watch(sort, (v) => {
+  try {
+    localStorage.setItem(SORT_KEY, v)
+  } catch {}
+})
+const categoryNames = ref(new Map<string, string>())
+const loadCategories = () =>
+  api
+    .categories()
+    .then((cs) => (categoryNames.value = new Map(cs.map((c) => [c.id, c.name]))))
+    .catch(() => {})
+watch(dataVersion, loadCategories)
+onMounted(loadCategories)
+function sortMenu(e: MouseEvent) {
+  openMenu(
+    e,
+    SORTS.map((x) => ({ label: x.label, icon: sort.value === x.key ? Check : undefined, run: () => (sort.value = x.key) })),
+  )
+}
+const rows = computed(() => {
+  const list = subs.value
+    // Trials with a countdown have their own section above.
+    .filter((s) => (s.status === 'active' || (s.status === 'trial' && !trials.value.some((t) => t.s.id === s.id))) && shown(s))
+    .map((s) => ({ s, c: nextBySub.value.get(s.id) ?? (s.nextCharge ? { ...s.nextCharge, inMain: s.nextInMain } : null) }))
+  const name = (x: (typeof list)[number]) => x.s.name.toLowerCase()
+  const cost = (x: (typeof list)[number]) => x.s.yearlyInMain ?? 0
+  const due = (x: (typeof list)[number]) => x.c?.dueDate ?? '9999'
+  const cat = (x: (typeof list)[number]) => (x.s.categoryId ? (categoryNames.value.get(x.s.categoryId) ?? '~') : '~').toLowerCase()
+  const by: Record<Sort, (a: (typeof list)[number], b: (typeof list)[number]) => number> = {
+    next: (a, b) => due(a).localeCompare(due(b)) || name(a).localeCompare(name(b)),
+    name: (a, b) => name(a).localeCompare(name(b)),
+    cost: (a, b) => cost(b) - cost(a) || name(a).localeCompare(name(b)),
+    cheap: (a, b) => cost(a) - cost(b) || name(a).localeCompare(name(b)),
+    category: (a, b) => cat(a).localeCompare(cat(b)) || due(a).localeCompare(due(b)),
   }
-  return out.filter((g) => g.rows.length)
+  return list.sort(by[sort.value])
 })
 // Free trials that turn into paid ones, ending soonest first (cancel in time).
 const trials = computed(() =>
@@ -169,6 +208,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
         <SyncDot />
         <span class="grow" />
         <button v-if="wide && !empty" class="icon-btn" aria-label="Add a payment" @click="adding = true"><Plus :size="22" /></button>
+        <button v-if="!empty" class="icon-btn" aria-label="Sort" title="Sort" @click="sortMenu"><ArrowDownUp :size="22" /></button>
         <NuxtLink v-if="!empty" to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
       </header>
       <SyncStaleHint />
@@ -222,24 +262,29 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
           </ul>
         </section>
 
-        <section v-for="g in groups" :key="g.id">
-          <h2 class="section-title">{{ g.title }}</h2>
-          <ul class="pane rows list">
+        <ul v-if="rows.length" class="pane rows list main-list">
+          <template v-for="{ s, c } in rows" :key="s.id">
             <ChargeRow
-              v-for="c in g.rows"
-              :key="chargeKey(c)"
+              v-if="c"
               :charge="c"
-              :class="{ selected: wide && c.subscriptionId === selected }"
-              :sub="byId.get(c.subscriptionId)!"
+              :class="{ selected: wide && s.id === selected }"
+              :sub="s"
               :main="data.mainCurrency"
               :today="today"
-              @open="open(c.subscriptionId)"
+              @open="open(s.id)"
               @move="moving = c"
               @menu="menu($event, c)"
             />
-          </ul>
-        </section>
-        <p v-if="!groups.length" class="muted small quiet">Nothing due until the end of next month.</p>
+            <li v-else>
+              <button class="sub-row" :class="{ selected: wide && s.id === selected }" @click="open(s.id)">
+                <SubIcon :icon="s.icon" :color="s.color" :name="s.name" :size="38" />
+                <span class="flex">{{ s.name }}</span>
+                <span class="muted small">No charge coming</span>
+              </button>
+            </li>
+          </template>
+        </ul>
+        <p v-else-if="!trials.length" class="muted small quiet">Nothing running right now.</p>
 
         <template v-if="paused.length">
           <button class="pane paused-row" :aria-expanded="showPaused" @click="showPaused = !showPaused">

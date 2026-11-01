@@ -169,7 +169,7 @@ async function setDesktop(f: () => Promise<void>) {
           <Gauge :size="20" class="muted" />
           <span class="flex stack">
             <span>Monthly budget</span>
-            <span class="muted small">Upcoming shows how much of it you use</span>
+            <span class="muted small">Home shows how much of it you use</span>
           </span>
           <form v-if="editingBudget" class="budget" @submit.prevent="saveBudget">
             <input
