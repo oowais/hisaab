@@ -12,6 +12,8 @@ const props = defineProps<{
   currency: string
   /** Editing this one; none = add a new one. */
   extra?: ExtraCharge | null
+  /** A new one starting from these (duplicating a charge). */
+  prefill?: { dueDate: string; amountMinor: number; currency: string; label: string } | null
 }>()
 const emit = defineEmits<{ close: [] }>()
 const toast = useToast()
@@ -19,10 +21,11 @@ useBackClose(() => emit('close'))
 
 const today = todayIso()
 const e = props.extra
-const label = ref(e?.label ?? '')
-const currency = ref(e?.currency ?? props.currency)
-const amountText = ref(e ? amountTextOf(e.amountMinor, e.currency) : '')
-const day = ref(e?.dueDate ?? today)
+const from = e ?? props.prefill ?? null
+const label = ref(from?.label ?? '')
+const currency = ref(from?.currency ?? props.currency)
+const amountText = ref(from ? amountTextOf(from.amountMinor, from.currency) : '')
+const day = ref(from?.dueDate ?? today)
 const pickingCurrency = ref(false)
 const pickingDay = ref(false)
 const error = ref('')

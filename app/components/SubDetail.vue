@@ -3,7 +3,19 @@
 // periods and charges (one-time ones too), and what it has cost so far. Its own screen on a
 // phone (pages/sub/[id].vue), the right-hand pane beside Upcoming on a wide
 // window (`embedded`).
-import { Archive, ArchiveRestore, ChevronDown, ChevronUp, ExternalLink, MoreVertical, Pencil, Plus, Trash2, Undo2 } from 'lucide-vue-next'
+import {
+  Archive,
+  ArchiveRestore,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  Undo2,
+} from 'lucide-vue-next'
 import type { Action, Detail, ExtraCharge, HistoryCharge, Period } from '~/composables/api'
 import DetailPane from '~/components/DetailPane.vue'
 import Screen from '~/components/Screen.vue'
@@ -135,6 +147,7 @@ function more(e: MouseEvent) {
   openMenu(e, [
     { label: 'Edit', icon: Pencil, run: () => (editing.value = true) },
     { label: 'Add a one-time charge', icon: Plus, run: () => (addingExtra.value = true) },
+    { label: 'Duplicate', icon: Copy, run: () => (duplicating.value = true) },
     sub.value?.archivedAt
       ? { label: 'Unarchive', icon: ArchiveRestore, run: () => archive(false) }
       : { label: 'Archive', icon: Archive, run: () => archive(true) },
@@ -260,6 +273,23 @@ const nextCharge = computed<HistoryCharge | null>(() => {
   return found ?? { ...n, inMain: s.nextInMain, overrideId: null }
 })
 
+// ---- Duplicate: the payment (Quick add, filled in; history optional), then
+// open the copy; a charge (as a new one-time charge, filled in).
+const duplicating = ref(false)
+function openCopy(newId: string) {
+  if (props.embedded) router.replace({ query: { sub: newId } })
+  else router.replace(`/sub/${newId}`)
+}
+const copyingCharge = ref<{ dueDate: string; amountMinor: number; currency: string; label: string } | null>(null)
+function duplicateCharge(c: HistoryCharge) {
+  copyingCharge.value = {
+    dueDate: c.dueDate,
+    amountMinor: c.settledAmountMinor ?? c.amountMinor,
+    currency: c.settledCurrency ?? c.currency,
+    label: c.label ?? '',
+  }
+}
+
 // ---- One-time charges: add as many as needed; edit or delete one.
 const addingExtra = ref(false)
 const editingExtra = ref<ExtraCharge | null>(null)
@@ -280,11 +310,13 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
   if (c.extraId)
     return openMenu(e, [
       { label: 'Edit this charge', icon: Pencil, run: () => openCharge(c) },
+      { label: 'Duplicate', icon: Copy, run: () => duplicateCharge(c) },
       'separator',
       { label: 'Delete', icon: Trash2, danger: true, run: () => deleteExtra(c) },
     ])
   openMenu(e, [
     { label: 'Edit this charge', icon: Pencil, run: () => (editingCharge.value = c) },
+    { label: 'Duplicate as one-time charge', icon: Copy, run: () => duplicateCharge(c) },
     ...(c.overrideId ? [{ label: 'Back to the usual charge', icon: Undo2, run: () => undoOverride(c) }] : []),
   ])
 }
@@ -431,6 +463,15 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
       :name="sub.name"
       :override-id="editingCharge.overrideId"
       @close="editingCharge = null"
+    />
+    <QuickAdd v-if="duplicating && sub" :copy="sub" @close="duplicating = false" @added="openCopy" />
+    <ExtraSheet
+      v-if="copyingCharge && sub"
+      :subscription-id="sub.id"
+      :name="sub.name"
+      :currency="copyingCharge.currency"
+      :prefill="copyingCharge"
+      @close="copyingCharge = null"
     />
     <ExtraSheet
       v-if="(addingExtra || editingExtra) && sub"

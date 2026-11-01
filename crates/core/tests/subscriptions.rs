@@ -357,3 +357,50 @@ fn reopen_a_cancelled_one_and_joined_edges_stay() {
     s.set_period_dates(&id, &ps[1].id, ps[1].start_date, None).unwrap();
     assert_eq!(s.overview(d("2026-06-01")).unwrap().subscriptions[0].status, SubscriptionStatus::Active);
 }
+
+#[test]
+fn duplicate_copies_the_whole_history_under_new_ids() {
+    let mut s = Store::open_in_memory().unwrap();
+    let sub = add(&mut s, "Phone", monthly(1000), "2026-01-15", None);
+    let id = sub.subscription.id.clone();
+    s.change_terms(&id, d("2026-03-15"), &monthly(1500)).unwrap();
+    let p0 = s.subscription(&id).unwrap().periods[0].id.clone();
+    s.set_override(&NewOverride {
+        period_id: p0,
+        due_date: d("2026-02-15"),
+        kind: OverrideKind::Skipped,
+        new_due_date: None,
+        actual_amount_minor: None,
+        actual_currency: None,
+        settled_amount_minor: None,
+        settled_currency: None,
+    })
+    .unwrap();
+    s.add_extra(&NewExtraCharge {
+        subscription_id: id.clone(),
+        due_date: d("2026-01-20"),
+        amount_minor: 2500,
+        currency: "EUR".into(),
+        label: "SIM".into(),
+    })
+    .unwrap();
+    let fields = SubscriptionFields { name: "Phone (Anna)".into(), ..Default::default() };
+    let copy = s.duplicate_subscription(&id, &fields).unwrap();
+    assert_ne!(copy.subscription.id, id);
+    assert_eq!(copy.subscription.name, "Phone (Anna)");
+    assert!(copy.periods.iter().all(|p| p.subscription_id == copy.subscription.id));
+    assert!(copy.periods.iter().all(|p| !sub.periods.iter().any(|o| o.id == p.id)));
+    let days = |sid: &str| -> Vec<(String, i64)> {
+        s.charges(d("2026-01-01"), d("2026-04-30"), d("2026-04-30"))
+            .unwrap()
+            .into_iter()
+            .filter(|c| c.subscription_id == sid)
+            .map(|c| (c.due_date.to_string(), c.amount_minor))
+            .collect()
+    };
+    assert_eq!(days(&copy.subscription.id), days(&id));
+    assert_eq!(
+        days(&id),
+        [("2026-01-15".into(), 1000), ("2026-01-20".into(), 2500), ("2026-03-15".into(), 1500), ("2026-04-15".into(), 1500)]
+    );
+}

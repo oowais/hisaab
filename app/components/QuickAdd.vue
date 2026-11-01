@@ -3,14 +3,16 @@
 // sentence to tap: "monthly, starting today". Below, what it is as grouped
 // chips (PaymentDetails); rarer things behind "+" chips.
 // From "Share → Hisaab" it opens on step 2 with what the shared text gave.
+// Duplicate (`copy`): step 2 with everything of that payment; "Include
+// history" copies its periods, changed and one-time charges as they are.
 import { Plus, X } from 'lucide-vue-next'
-import type { Kind, Unit } from '~/composables/api'
+import type { Detail, Kind, SubscriptionFields, Unit } from '~/composables/api'
 import { amountText as amountTextOf } from '~/utils/money'
 import type { Shared } from '~/utils/share'
-import type { Template } from '~/utils/templates'
+import { TEMPLATES, type Template } from '~/utils/templates'
 
-const props = defineProps<{ share?: Shared | null }>()
-const emit = defineEmits<{ close: [] }>()
+const props = defineProps<{ share?: Shared | null; copy?: Detail | null }>()
+const emit = defineEmits<{ close: []; added: [id: string] }>()
 useBackClose(() => emit('close'))
 const toast = useToast()
 const today = todayIso()
@@ -23,7 +25,7 @@ const chosen = computed(() => !!name.value.trim())
 const matches = computed(() => searchTemplates(query.value, 6))
 const search = ref<HTMLInputElement>()
 onMounted(() => {
-  if (!props.share) search.value?.focus()
+  if (!props.share && !props.copy) search.value?.focus()
 })
 
 // ---- Step 2: how much, how often, from when
@@ -132,6 +134,37 @@ if (props.share) {
     amountText.value = amountTextOf(a.minor, a.currency)
   }
 }
+// ---- Duplicate
+const includeHistory = ref(false)
+if (props.copy) {
+  const c = props.copy
+  const p = c.current ?? c.periods.at(-1) ?? null
+  template.value = TEMPLATES.find((t) => t.key === c.templateKey) ?? null
+  name.value = `${c.name} (copy)`
+  icon.value = c.icon
+  color.value = c.color
+  kind.value = c.kind
+  categoryId.value = c.categoryId
+  methodId.value = c.paymentMethodId
+  myShare.value = c.myShare
+  remindDays.value = c.remindDaysBefore == null ? '' : String(c.remindDaysBefore)
+  url.value = c.url ?? ''
+  notes.value = c.notes
+  if (p) {
+    currency.value = p.currency
+    amountText.value = p.amountMinor ? amountTextOf(p.amountMinor, p.currency) : ''
+    everyN.value = p.everyN
+    unit.value = p.unit
+    planLabel.value = p.planLabel ?? ''
+  }
+}
+const historyText = computed(() => {
+  const c = props.copy
+  if (!c) return ''
+  const n = c.periods.length
+  return `${n} ${n === 1 ? 'period' : 'periods'} and every charge as it was`
+})
+
 watch(trial, (on) => {
   if (on && !trialEnd.value) trialEnd.value = addDays(start.value, 13)
 })
@@ -139,43 +172,51 @@ watch(trial, (on) => {
 const error = ref('')
 const saving = ref(false)
 const amount = computed(() => parseAmount(amountText.value, currency.value))
+async function fields(): Promise<SubscriptionFields> {
+  const days = remindDays.value.trim() === '' ? null : Number(remindDays.value)
+  return {
+    kind: kind.value,
+    name: name.value.trim(),
+    templateKey: template.value?.key ?? null,
+    icon: icon.value,
+    color: color.value,
+    categoryId: await savedCategoryId(categoryId.value),
+    paymentMethodId: methodId.value,
+    url: url.value.trim() || null,
+    notes: notes.value.trim(),
+    remindDaysBefore: days != null && Number.isInteger(days) && days >= 0 ? days : null,
+    myShare: myShare.value,
+  }
+}
+
 async function save() {
   if (!chosen.value) return
-  if (amount.value == null) {
+  const withHistory = !!props.copy && includeHistory.value
+  if (!withHistory && amount.value == null) {
     error.value = 'Enter the amount.'
     return amountInput.value?.focus()
   }
-  const days = remindDays.value.trim() === '' ? null : Number(remindDays.value)
   saving.value = true
   try {
-    await api.addSubscription({
-      fields: {
-        kind: kind.value,
-        name: name.value.trim(),
-        templateKey: template.value?.key ?? null,
-        icon: icon.value,
-        color: color.value,
-        categoryId: await savedCategoryId(categoryId.value),
-        paymentMethodId: methodId.value,
-        url: url.value.trim() || null,
-        notes: notes.value.trim(),
-        remindDaysBefore: days != null && Number.isInteger(days) && days >= 0 ? days : null,
-        myShare: myShare.value,
-      },
-      terms: {
-        amountMinor: amount.value,
-        currency: currency.value,
-        everyN: everyN.value,
-        unit: unit.value,
-        planLabel: planLabel.value.trim() || null,
-        amountKind: 'fixed',
-      },
-      startDate: start.value,
-      anchorDate: null,
-      trialEnd: trial.value ? trialEnd.value : null,
-    })
+    const id = withHistory
+      ? await api.duplicateSubscription(props.copy!.id, await fields())
+      : await api.addSubscription({
+          fields: await fields(),
+          terms: {
+            amountMinor: amount.value!,
+            currency: currency.value,
+            everyN: everyN.value,
+            unit: unit.value,
+            planLabel: planLabel.value.trim() || null,
+            amountKind: 'fixed',
+          },
+          startDate: start.value,
+          anchorDate: null,
+          trialEnd: trial.value ? trialEnd.value : null,
+        })
     changed()
     toast.show({ message: `Added ${name.value.trim()}` })
+    emit('added', id)
     emit('close')
   } catch (e) {
     error.value = friendlyError(e, 'add it')
@@ -225,7 +266,14 @@ async function save() {
           <button type="button" class="icon-btn" aria-label="Pick something else" @click="back"><X :size="20" /></button>
         </header>
 
-        <div class="amount-row">
+        <div v-if="copy" class="history">
+          <button type="button" class="chip" :class="includeHistory ? 'chosen' : 'off'" @click="includeHistory = !includeHistory">
+            <Plus v-if="!includeHistory" :size="14" /> Include history
+          </button>
+          <span class="muted small">{{ includeHistory ? `Copies ${historyText}` : 'Starts fresh from the day you pick' }}</span>
+        </div>
+
+        <div v-if="!includeHistory" class="amount-row">
           <input
             ref="amountInput"
             v-model="amountText"
@@ -238,8 +286,8 @@ async function save() {
           <button type="button" class="field currency" aria-label="Currency" @click="pickingCurrency = true">{{ currency }}</button>
         </div>
 
-        <p v-if="overBudget" class="over small">{{ overBudget }}</p>
-        <p class="sentence">
+        <p v-if="overBudget && !includeHistory" class="over small">{{ overBudget }}</p>
+        <p v-if="!includeHistory" class="sentence">
           <button type="button" class="word" :aria-expanded="pickingInterval" @click="pickingInterval = !pickingInterval">
             {{ intervalText(everyN, unit) }}</button
           >, {{ trial ? 'trial' : 'starting' }}
@@ -284,13 +332,13 @@ async function save() {
           class="details"
           :template-key="template?.key"
         >
-          <template #extras>
+          <template v-if="!includeHistory" #extras>
             <button type="button" class="chip" :class="trial ? 'chosen' : 'off'" @click="trial = !trial">
               <Plus v-if="!trial" :size="14" /> Free trial
             </button>
             <button v-if="!planOpen && !planLabel" type="button" class="chip off" @click="openPlan"><Plus :size="14" /> Plan</button>
           </template>
-          <template #fields>
+          <template v-if="!includeHistory" #fields>
             <p v-if="trial" class="trial muted">
               Free trial, ends
               <button type="button" class="word" @click="pickingTrialEnd = true">{{ trialEnd ? relativeDay(trialEnd) : '…' }}</button>
@@ -434,6 +482,12 @@ async function save() {
 .custom .n {
   width: 4.5em;
   text-align: center;
+}
+.history {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .details {
   margin-top: 8px;

@@ -154,6 +154,11 @@ fn update_subscription(app: AppHandle, id: String, fields: SubscriptionFields) -
 }
 
 #[tauri::command]
+fn duplicate_subscription(app: AppHandle, id: String, fields: SubscriptionFields) -> Res<String> {
+    write(&app, |s| s.duplicate_subscription(&id, &fields).map(|d| d.subscription.id))
+}
+
+#[tauri::command]
 fn set_period_dates(app: AppHandle, id: String, period_id: String, start: NaiveDate, end: Option<NaiveDate>) -> Res<()> {
     write(&app, |s| s.set_period_dates(&id, &period_id, start, end).map(drop))
 }
@@ -606,6 +611,7 @@ pub fn run() {
             change_terms,
             change_billing_day,
             set_period_dates,
+            duplicate_subscription,
             pause,
             resume,
             cancel,

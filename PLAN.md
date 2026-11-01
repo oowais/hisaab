@@ -304,6 +304,7 @@ Milestone 8 so far:
 - [x] Change billing day (Nov 1, 2026): Detail action for running payments; pick the next charge's day (today or later); later charges follow it, earlier ones stay (core `change_billing_day`: split at tomorrow, new anchor; scheduled price changes on the old day follow; refused while paused or in a free trial)
 - [x] "Amount varies" removed (Nov 1, 2026): every charge is the amount entered (change it with Change price, a single charge in its sheet, one-time charges for extras). No estimates, averaging, "~" or "about" anywhere; `amount_kind` stays in the schema for old rows and peers, never read
 - [x] Fix a period's dates (Nov 1, 2026): tap a row in Detail's Periods: "Started on" (first period or after a break; the billing day moves with it when it began there) and "Ended on" (a cancellation or the end before a break; the latest can go back to "Still running"); sides joined to a neighbour stay fixed (core `set_period_dates`). Restart stays its own action
+- [x] Duplicate (Nov 2, 2026): a payment from Detail's ⋮ menu opens Quick add filled in ("… (copy)", price, billing, category, method, part, reminder, link, notes); "Include history" copies all periods, changed and one-time charges under new ids (core `duplicate_subscription`), else it starts fresh from the day picked; then the copy opens. A charge: "Duplicate" in its menu opens a new one-time charge filled in
 
 - [ ] CSV/Wallos import: skipped for now (Nov 1, 2026), by choice
 

@@ -186,6 +186,28 @@ fn check_extra(amount_minor: i64, currency: &str) -> Result<()> {
     Ok(())
 }
 
+fn insert_subscription(c: &Connection, id: &str, f: &SubscriptionFields, now: i64) -> Result<()> {
+    c.execute(
+        &format!("INSERT INTO subscription ({SUB_COLS}, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL, ?13, ?12, ?12)"),
+        params![
+            id,
+            f.kind.unwrap_or(Kind::Subscription).as_str(),
+            f.name.trim(),
+            f.template_key,
+            f.icon,
+            f.color,
+            f.category_id,
+            f.payment_method_id,
+            f.url,
+            f.notes,
+            f.remind_days_before,
+            now,
+            f.my_share,
+        ],
+    )?;
+    Ok(())
+}
+
 fn load_subscription(c: &Connection, id: &str) -> Result<Subscription> {
     c.query_row(&format!("SELECT {SUB_COLS} FROM subscription WHERE id = ?1 AND deleted_at IS NULL"), [id], sub_row)
         .optional()?
@@ -534,27 +556,62 @@ impl Store {
             end_date: None,
         });
         self.write(|c, now| {
-            c.execute(
-                &format!("INSERT INTO subscription ({SUB_COLS}, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL, ?13, ?12, ?12)"),
-                params![
-                    id,
-                    f.kind.unwrap_or(Kind::Subscription).as_str(),
-                    f.name.trim(),
-                    f.template_key,
-                    f.icon,
-                    f.color,
-                    f.category_id,
-                    f.payment_method_id,
-                    f.url,
-                    f.notes,
-                    f.remind_days_before,
-                    now,
-                    f.my_share,
-                ],
-            )?;
+            insert_subscription(c, &id, f, now)?;
             save_periods(c, &[], &periods, now)
         })?;
         self.subscription(&id)
+    }
+
+    /// A copy of `id` under `fields`, with its whole history: periods,
+    /// changed charges and one-time charges, all with new ids. (Without
+    /// the history the app adds a new one with the current terms instead.)
+    pub fn duplicate_subscription(&mut self, id: &str, fields: &SubscriptionFields) -> Result<SubscriptionDetail> {
+        validate_fields(fields)?;
+        let src = self.subscription(id)?;
+        let new_sub = new_id();
+        let mut ids = std::collections::HashMap::new();
+        let periods: Vec<Period> = src
+            .periods
+            .iter()
+            .map(|p| {
+                let pid = new_id();
+                ids.insert(p.id.clone(), pid.clone());
+                Period { id: pid, subscription_id: new_sub.clone(), ..p.clone() }
+            })
+            .collect();
+        self.write(|c, now| {
+            insert_subscription(c, &new_sub, fields, now)?;
+            save_periods(c, &[], &periods, now)?;
+            for o in &src.overrides {
+                let Some(pid) = ids.get(&o.period_id) else { continue };
+                c.execute(
+                    "INSERT INTO charge_override (id, period_id, due_date, kind, new_due_date, actual_amount_minor,
+                       actual_currency, settled_amount_minor, settled_currency, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)",
+                    params![
+                        new_id(),
+                        pid,
+                        o.due_date.to_string(),
+                        o.kind.as_str(),
+                        o.new_due_date.map(|d| d.to_string()),
+                        o.actual_amount_minor,
+                        o.actual_currency,
+                        o.settled_amount_minor,
+                        o.settled_currency,
+                        now,
+                    ],
+                )?;
+            }
+            for e in &src.extras {
+                c.execute(
+                    "INSERT INTO extra_charge (id, subscription_id, due_date, amount_minor, currency, label, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+                    params![new_id(), new_sub, e.due_date.to_string(), e.amount_minor, e.currency, e.label, now],
+                )?;
+            }
+            Ok(())
+        })?;
+        self.subscription(&new_sub)
     }
 
     pub fn update_subscription(&mut self, id: &str, f: &SubscriptionFields) -> Result<()> {
