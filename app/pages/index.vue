@@ -6,6 +6,8 @@ import {
   Archive,
   ArrowDownUp,
   Check,
+  ListFilter,
+  X,
   CalendarClock,
   ChevronDown,
   ChevronUp,
@@ -18,6 +20,7 @@ import {
   TriangleAlert,
 } from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
+import { matches, NO_CATEGORY, type HomeFilter } from '~/utils/homeFilter'
 import type { Shared } from '~/utils/share'
 
 const router = useRouter()
@@ -49,11 +52,28 @@ watch(
 )
 
 // ---- Filter: only when there are both kinds
-type Filter = 'all' | 'subscription' | 'bill'
-const filter = ref<Filter>('all')
+const FILTER_KEY = 'hisaab.homeFilter'
+const filter = ref<HomeFilter>({ kind: 'all', categories: [] })
+try {
+  const saved = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null')
+  if (saved && typeof saved.kind === 'string' && Array.isArray(saved.categories)) filter.value = saved
+} catch {}
+watch(filter, (v) => {
+  try {
+    localStorage.setItem(FILTER_KEY, JSON.stringify(v))
+  } catch {}
+})
+const filtering = ref(false)
+const filtered = computed(() => filter.value.kind !== 'all' || filter.value.categories.length > 0)
+/** "Bills · Streaming, Music" for the active filter. */
+const filterText = computed(() => {
+  const f = filter.value
+  const kind = f.kind === 'all' ? '' : f.kind === 'bill' ? 'Bills' : 'Subscriptions'
+  const cats = f.categories.map((c) => (c === NO_CATEGORY ? 'No category' : (categoryNames.value.get(c) ?? '…'))).join(', ')
+  return [kind, cats].filter(Boolean).join(' · ')
+})
 const subs = computed(() => data.value?.subscriptions ?? [])
-const bothKinds = computed(() => subs.value.some((s) => s.kind === 'bill') && subs.value.some((s) => s.kind === 'subscription'))
-const shown = (s: SubscriptionView) => filter.value === 'all' || s.kind === filter.value
+const shown = (s: SubscriptionView) => matches(filter.value, s, categoryNames.value)
 const byId = computed(() => new Map(subs.value.map((s) => [s.id, s])))
 
 // ---- Header total: tap cycles month → year → day
@@ -208,6 +228,9 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
         <SyncDot />
         <span class="grow" />
         <button v-if="wide && !empty" class="icon-btn" aria-label="Add a payment" @click="adding = true"><Plus :size="22" /></button>
+        <button v-if="!empty" class="icon-btn filter-btn" aria-label="Filter" title="Filter" @click="filtering = true">
+          <ListFilter :size="22" /><span v-if="filtered" class="dot" />
+        </button>
         <button v-if="!empty" class="icon-btn" aria-label="Sort" title="Sort" @click="sortMenu"><ArrowDownUp :size="22" /></button>
         <NuxtLink v-if="!empty" to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
       </header>
@@ -230,18 +253,9 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
           <span v-else>Rates from {{ shortDay(data.ratesDate!) }}</span>
         </p>
 
-        <div v-if="bothKinds" class="chips filters" role="radiogroup" aria-label="Show">
-          <button
-            v-for="f in ['all', 'subscription', 'bill'] as const"
-            :key="f"
-            class="chip"
-            role="radio"
-            :aria-checked="filter === f"
-            :class="{ chosen: filter === f }"
-            @click="filter = f"
-          >
-            {{ { all: 'All', subscription: 'Subscriptions', bill: 'Bills' }[f] }}
-          </button>
+        <div v-if="filtered" class="chips filters">
+          <button class="chip chosen" @click="filtering = true">{{ filterText }}</button>
+          <button class="icon-btn" aria-label="Show all" @click="filter = { kind: 'all', categories: [] }"><X :size="18" /></button>
         </div>
 
         <section v-if="trials.length">
@@ -337,6 +351,14 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
     </aside>
 
     <button v-if="!empty && !wide" class="fab ink" aria-label="Add a payment" @click="adding = true"><Plus :size="26" /></button>
+    <FilterSheet
+      v-if="filtering && data"
+      v-model="filter"
+      :subs="subs.filter((s) => s.status !== 'ended')"
+      :names="categoryNames"
+      :main="data.mainCurrency"
+      @close="filtering = false"
+    />
     <QuickAdd v-if="adding" :share="shared" @close="((adding = false), (shared = null))" />
     <ExtraSheet
       v-if="editing?.extraId"
@@ -386,8 +408,21 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 }
 .filters {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
   margin-top: 14px;
+}
+.filter-btn {
+  position: relative;
+}
+.filter-btn .dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 .list {
   margin: 0;
