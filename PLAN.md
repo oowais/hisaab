@@ -118,7 +118,7 @@ Required tests: month-end clamping, leap years, weekly/yearly, every 3 months, p
 
 ## 6. Screens
 
-Android: bottom nav with 3 tabs (Upcoming · Timeline · Stats; Stats hidden until v1.1). Desktop: sidebar + list/detail split. Settings via icon.
+Android: bottom nav with 3 tabs (Upcoming · Timeline · Stats). Desktop: sidebar + list/detail split. Settings via icon.
 
 ### 6.1 Upcoming (home)
 
@@ -208,7 +208,8 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 | 4   | Timeline                       | Done (Nov 1, 2026)                                                                            |
 | 5   | Notifications                  | Done (Nov 1, 2026): needs a release to check on Android                                       |
 | 6   | Sync + backup                  | Done (Nov 1, 2026): needs a release to check pairing and background sync on Android           |
-| 7   | v1.1                           | Next                                                                                          |
+| 7   | v1.1                           | Done (Nov 1, 2026): widget needs a release to check on Android                                |
+| 8   | Later                          | Next                                                                                          |
 
 Milestone 1 checklist:
 
@@ -275,11 +276,21 @@ Milestone 6 checklist:
 - [x] UI: Sync (on/off, name, devices, QR / scan / paste link), Conflicts, Backup; sync dot and stale hint on Upcoming; Settings → Data
 - [ ] Check on real devices: pairing phone ↔ computer, QR scan (camera), background sync, Android backup folder (Kotlin only compiles in CI)
 
-**Next:** milestone 7 — v1.1: Stats, calendar month view, charge overrides UI, archive view, variable bills, Android widget.
+Milestone 7 checklist:
+
+- [x] Charge overrides UI: `ChargeSheet` from Detail (new Coming list + history) and the Upcoming menu: amount taken (other currency = settled), a bill's real amount, another date, skip, back to the usual; an amount override keeps a moved date
+- [x] Variable bills: a charge without its real figure costs the average of the last 3 real ones (`occurrence.rs`); "Amount varies" in Change price; history asks for the real amount
+- [x] Ended and archived screen (`/archive`, core `archived`), from Upcoming and Settings → Data
+- [x] Stats tab (core `stats.rs`, hand-built SVG, no chart library): monthly spend stacked by category (12 months / all, this and next month as forecast), yearly cost by category / payment method / currency, per day, saved by pausing and cancelling
+- [x] Calendar (`/calendar`, core `month_charges`): month grid with each day's payments, month total, day list with move / change
+- [x] Android widget (`PaymentsWidget.kt`, JNI `widget`): monthly cost, next charges, + opens Quick add; refreshed on every arm and after background sync
+- [ ] Check on a phone: the widget (Kotlin only compiles in CI)
+
+**Next:** milestone 8 — later: shared/split cost, budget cap, CSV/Wallos import, trial countdown with cancel link. Also open from earlier milestones: desktop sidebar + list/detail split; managing categories, payment methods and templates in Settings; checks on real devices (Windows update, Linux install, Android reminders, sync, widget).
 
 ### Backlog (Befikr features not copied yet)
 
-Share-to-app, home-screen widget (v1.1), morning digest, voice input, desktop tray + start at login (with milestone 5), search, calendar month view (v1.1), project page (`pages.yml`), AUR `hisaab-bin`.
+Share-to-app, morning digest, voice input, search, project page (`pages.yml`), AUR `hisaab-bin`.
 
 ## 11. Working agreements for Claude Code
 

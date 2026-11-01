@@ -2,6 +2,15 @@
 
 One short note per milestone. Per-release notes come from the commits (`.github/scripts/release-notes.sh`).
 
+## Milestone 7 — v1.1 (Nov 1, 2026)
+
+- Stats: spend per month by category (past prices stay right), what you pay a year by category, payment method and currency, cost per day, and what pausing and cancelling saved.
+- Calendar: a month at a glance with what's charged each day and the month's total.
+- Edit a single charge: what was really taken (also in another currency), a bill's real amount, another date, or skip it.
+- Variable bills learn their amount: coming ones use the average of the last three real ones.
+- Ended and archived: finished payments in one place; archive or bring back.
+- Android home-screen widget: monthly cost and the next charges.
+
 ## Milestone 6 — Sync and backup (Nov 1, 2026)
 
 - Sync between your devices, peer to peer (Befikr's engine): pair by QR code or link, end-to-end encrypted, no account or server of ours.
