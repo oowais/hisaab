@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label">Hisaab coming up</string>
+    <string name="widget_description">What you pay a month and the next charges</string>
+</resources>

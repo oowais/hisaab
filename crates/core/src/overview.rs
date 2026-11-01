@@ -216,6 +216,29 @@ impl Store {
     }
 }
 
+/// The Android home-screen widget: the monthly cost and the next charges.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Widget {
+    pub main_currency: String,
+    /// What the running payments cost a month, in main.
+    pub monthly_total: i64,
+    /// This device's day (for "today", "in 3 days").
+    pub today: NaiveDate,
+    pub charges: Vec<WidgetCharge>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetCharge {
+    pub subscription_id: String,
+    pub name: String,
+    pub due_date: NaiveDate,
+    pub amount_minor: i64,
+    pub currency: String,
+    pub estimated: bool,
+}
+
 /// One calendar month's charges (the Calendar screen).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -245,6 +268,28 @@ impl Store {
         excluded.sort();
         excluded.dedup();
         Ok(MonthCharges { charges, total, excluded_currencies: excluded })
+    }
+
+    /// The widget's data at `now_ms` in `tz`: the next `limit` charges from today.
+    pub fn widget(&self, now_ms: i64, tz: &str, limit: usize) -> Result<Widget> {
+        let today = crate::reminders::local_day(now_ms, crate::reminders::parse_tz(tz));
+        let o = self.overview(today)?;
+        let names: std::collections::HashMap<&str, &str> =
+            o.subscriptions.iter().map(|v| (v.subscription.id.as_str(), v.subscription.name.as_str())).collect();
+        let charges = o
+            .upcoming
+            .iter()
+            .take(limit)
+            .map(|u| WidgetCharge {
+                subscription_id: u.charge.subscription_id.clone(),
+                name: names.get(u.charge.subscription_id.as_str()).map(|n| n.to_string()).unwrap_or_default(),
+                due_date: u.charge.due_date,
+                amount_minor: u.charge.amount_minor,
+                currency: u.charge.currency.clone(),
+                estimated: u.charge.estimated,
+            })
+            .collect();
+        Ok(Widget { main_currency: o.main_currency, monthly_total: (o.yearly_total + 6) / 12, today, charges })
     }
 
     /// Archived subscriptions, by name (the Archive screen).

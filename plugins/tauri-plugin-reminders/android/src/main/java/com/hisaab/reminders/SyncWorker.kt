@@ -35,7 +35,10 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
             Log.w(TAG, "background sync: ${out.getString("error")}")
             return Result.success()
         }
-        out.optJSONArray("reminders")?.let { Scheduler.replaceAll(ctx, it) }
+        out.optJSONArray("reminders")?.let {
+            Scheduler.replaceAll(ctx, it)
+            PaymentsWidget.refresh(ctx)
+        }
         Log.i(TAG, "background sync: " + (if (out.has("reminders")) "merged" else "nothing new") +
             (out.optString("skipped").takeIf { it.isNotEmpty() }?.let { ", skipped ($it)" } ?: "") +
             (out.optString("problem").takeIf { it.isNotEmpty() }?.let { ", $it" } ?: ""))

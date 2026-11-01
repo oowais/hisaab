@@ -27,4 +27,7 @@ object Native {
 
     /** One background sync round. → `{"reminders"?: [Reminder], "skipped"?, "problem"?}` */
     external fun syncOnce(dbPath: String, keyPath: String, tz: String): String
+
+    /** Home-screen widget: monthly cost and the next [limit] charges. → `{"widget": Widget}` */
+    external fun widget(dbPath: String, tz: String, limit: Int): String
 }

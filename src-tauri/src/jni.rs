@@ -174,3 +174,20 @@ async fn tokio_timeout<T>(
         Err(_) => Err("background sync timed out".into()),
     }
 }
+
+/// Home-screen widget: the monthly cost and the next `limit` charges in `tz`.
+/// → `{"widget": Widget}`
+#[no_mangle]
+pub extern "system" fn Java_com_hisaab_reminders_Native_widget<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    tz: JString<'l>,
+    limit: jni::sys::jint,
+) -> jstring {
+    respond(&mut env, |env| {
+        let (path, tz) = (arg(env, &db_path)?, arg(env, &tz)?);
+        let w = store(&path)?.widget(now_ms(), &tz, limit.max(0) as usize).map_err(|e| e.to_string())?;
+        Ok(json!({ "widget": w }))
+    })
+}

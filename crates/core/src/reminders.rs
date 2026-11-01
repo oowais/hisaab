@@ -74,7 +74,7 @@ pub fn local_ms(day: NaiveDate, time: NaiveTime, tz: Tz) -> i64 {
     Utc.from_utc_datetime(&local).timestamp_millis()
 }
 
-fn local_day(ms: i64, tz: Tz) -> NaiveDate {
+pub(crate) fn local_day(ms: i64, tz: Tz) -> NaiveDate {
     Utc.timestamp_millis_opt(ms).single().map_or_else(|| Utc::now().date_naive(), |t| t.with_timezone(&tz).date_naive())
 }
 

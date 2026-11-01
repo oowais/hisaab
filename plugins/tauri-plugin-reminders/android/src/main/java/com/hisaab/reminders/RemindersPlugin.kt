@@ -71,6 +71,8 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         val args = invoke.parseArgs(ArmArgs::class.java)
         Prefs.setDbPath(activity, args.dbPath)
         Scheduler.replaceAll(activity, JSONArray(args.reminders))
+        // Called after every change: the widget follows.
+        PaymentsWidget.refresh(activity)
         if (!configured) {
             configured = true
             Backup.scheduleDaily(activity)

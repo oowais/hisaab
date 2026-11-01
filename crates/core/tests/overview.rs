@@ -112,3 +112,16 @@ fn a_months_charges_and_total() {
     assert_eq!(days, ["2026-03-02", "2026-03-09", "2026-03-10", "2026-03-16", "2026-03-23", "2026-03-30"]);
     assert_eq!(m.total, 1000 + 5 * 1200);
 }
+
+#[test]
+fn widget_shows_the_month_and_next_charges() {
+    let mut s = store();
+    add(&mut s, "Rent", monthly(95000), "2026-01-01");
+    add(&mut s, "Netflix", monthly(1399), "2026-01-20");
+    // 2026-03-17 12:00 UTC.
+    let w = s.widget(1_773_748_800_000, "Europe/Berlin", 1).unwrap();
+    assert_eq!(w.today, d("2026-03-17"));
+    assert_eq!(w.monthly_total, 95000 + 1399);
+    assert_eq!(w.charges.len(), 1);
+    assert_eq!((w.charges[0].name.as_str(), w.charges[0].due_date), ("Netflix", d("2026-03-20")));
+}

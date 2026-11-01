@@ -21,6 +21,17 @@ const router = useRouter()
 const { data, error, today } = useOverview()
 const toast = useToast()
 const adding = ref(false)
+// The widget's +: opened with ?add=1.
+const route = useRoute()
+watch(
+  () => route.query.add,
+  (v) => {
+    if (!v) return
+    adding.value = true
+    router.replace({ query: {} })
+  },
+  { immediate: true },
+)
 
 // ---- Filter: only when there are both kinds
 type Filter = 'all' | 'subscription' | 'bill'
