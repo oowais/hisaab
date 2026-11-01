@@ -34,8 +34,15 @@ onMounted(async () => {
   if (s && !template.value?.currency) currency.value = s.lastCurrency ?? s.mainCurrency
 })
 
+// The tile: the template's, until changed in the icon sheet.
+const icon = ref<string | null>(null)
+const color = ref<string | null>(null)
+const pickingIcon = ref(false)
+
 function choose(t: Template | null) {
   template.value = t
+  icon.value = t?.icon ?? null
+  color.value = t?.color ?? null
   name.value = t?.name ?? query.value.trim()
   if (t) {
     kind.value = t.kind
@@ -127,8 +134,8 @@ async function save() {
         kind: kind.value,
         name: name.value.trim(),
         templateKey: template.value?.key ?? null,
-        icon: template.value?.icon ?? null,
-        color: template.value?.color ?? null,
+        icon: icon.value,
+        color: color.value,
         categoryId: categoryId.value,
         paymentMethodId: methodId.value,
         url: url.value.trim() || null,
@@ -191,7 +198,9 @@ async function save() {
       <!-- Step 2: details -->
       <template v-else>
         <header class="head">
-          <SubIcon :icon="template?.icon ?? null" :color="template?.color ?? null" :name="name" :size="36" />
+          <button type="button" class="tile-btn" aria-label="Change icon and colour" @click="pickingIcon = true">
+            <SubIcon :icon="icon" :color="color" :name="name" :size="36" />
+          </button>
           <input v-model="name" class="name-input" aria-label="Name" />
           <button type="button" class="icon-btn" aria-label="Pick something else" @click="back"><X :size="20" /></button>
         </header>
@@ -324,6 +333,14 @@ async function save() {
     </form>
 
     <CurrencySheet v-if="pickingCurrency" v-model="currency" @close="pickingCurrency = false" />
+    <IconSheet
+      v-if="pickingIcon"
+      :icon="icon"
+      :color="color"
+      :name="name"
+      @pick="(i, c) => ((icon = i), (color = c))"
+      @close="pickingIcon = false"
+    />
     <DateSheet v-if="pickingStart" v-model="start" :title="trial ? 'Trial starts' : 'First charge'" @close="pickingStart = false" />
     <DateSheet v-if="pickingTrialEnd" v-model="trialEnd" title="Trial ends" :min="start" @close="pickingTrialEnd = false" />
   </div>
@@ -469,5 +486,9 @@ async function save() {
 }
 .error {
   margin: 0;
+}
+.tile-btn {
+  padding: 0;
+  display: inline-flex;
 }
 </style>

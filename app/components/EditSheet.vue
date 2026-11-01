@@ -12,6 +12,9 @@ const name = ref(s.name)
 const kind = ref(s.kind)
 const url = ref(s.url ?? '')
 const notes = ref(s.notes)
+const icon = ref(s.icon)
+const color = ref(s.color)
+const pickingIcon = ref(false)
 const remindDays = ref(s.remindDaysBefore == null ? '' : String(s.remindDaysBefore))
 const error = ref('')
 
@@ -22,8 +25,8 @@ async function save() {
       kind: kind.value,
       name: name.value,
       templateKey: s.templateKey,
-      icon: s.icon,
-      color: s.color,
+      icon: icon.value,
+      color: color.value,
       categoryId: s.categoryId,
       paymentMethodId: s.paymentMethodId,
       url: url.value.trim() || null,
@@ -45,7 +48,12 @@ async function save() {
         <b>Edit</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>
       </header>
-      <input v-model="name" class="field" aria-label="Name" />
+      <div class="name-row">
+        <button type="button" class="tile-btn" aria-label="Change icon and colour" @click="pickingIcon = true">
+          <SubIcon :icon="icon" :color="color" :name="name" :size="44" />
+        </button>
+        <input v-model="name" class="field" aria-label="Name" />
+      </div>
       <div class="chips">
         <button type="button" class="chip" :class="{ chosen: kind === 'subscription' }" @click="kind = 'subscription'">Subscription</button>
         <button type="button" class="chip" :class="{ chosen: kind === 'bill' }" @click="kind = 'bill'">Bill</button>
@@ -65,6 +73,14 @@ async function save() {
       <p v-if="error" class="error">{{ error }}</p>
       <button type="submit" class="btn primary">Save</button>
     </form>
+    <IconSheet
+      v-if="pickingIcon"
+      :icon="icon"
+      :color="color"
+      :name="name"
+      @pick="(i, c) => ((icon = i), (color = c))"
+      @close="pickingIcon = false"
+    />
   </div>
 </template>
 
@@ -104,5 +120,17 @@ textarea {
 }
 .error {
   margin: 0;
+}
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.name-row .field {
+  flex: 1;
+}
+.tile-btn {
+  padding: 0;
+  display: inline-flex;
 }
 </style>

@@ -246,6 +246,7 @@ Milestone 3 checklist:
 - [x] Quick add: template search (54 templates, Simple Icons + Lucide fallbacks for brands Simple Icons dropped), amount + currency, tappable "monthly, starting today", More
 - [x] Detail: status card, actions by status (sheets with sensible default dates), mini timeline strip, periods, total spent, charge history (undo an override), edit, archive, delete with undo
 - [x] Settings: main currency, default reminder days
+- [x] Icon and colour picker (Quick add, Edit): 57 brand glyphs, 41 generic icons, 12 swatches
 - [ ] Not yet: desktop sidebar + list/detail split; managing categories, payment methods and templates in Settings; editing a past charge's amount (v1.1 "charge overrides UI")
 
 **Next:** milestone 4 — Timeline view (hand-built SVG): one lane per subscription, zoom, status styles, price-change diamonds, today line, sort, tap → Detail.
