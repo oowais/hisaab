@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Upcoming (home): what's charged next, grouped by when, and what it all
 // costs per month / year / day in the main currency.
-import { CalendarClock, ChevronDown, ChevronUp, CirclePause, Ban, Pencil, Plus, Settings, TriangleAlert } from 'lucide-vue-next'
+import { Archive, CalendarClock, ChevronDown, ChevronUp, CirclePause, Ban, Pencil, Plus, Settings, TriangleAlert } from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
 
 const update = useUpdate()
@@ -56,6 +56,7 @@ const groups = computed(() => {
 })
 const paused = computed(() => subs.value.filter((s) => s.status === 'paused' && shown(s)))
 const showPaused = ref(false)
+const endedCount = computed(() => subs.value.filter((s) => s.status === 'ended').length)
 const empty = computed(() => data.value && !subs.value.some((s) => s.status !== 'ended'))
 
 // ---- Row actions
@@ -158,6 +159,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
           </li>
         </ul>
       </template>
+      <NuxtLink v-if="endedCount" to="/archive" class="archive-link muted small"> <Archive :size="15" /> {{ endedCount }} ended </NuxtLink>
     </template>
 
     <div v-else-if="data" class="empty">
@@ -222,6 +224,15 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   margin: 0;
   padding-top: 4px;
   padding-bottom: 4px;
+}
+.archive-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 20px auto 0;
+  color: var(--muted);
+  text-decoration: none;
 }
 .quiet {
   margin-top: 24px;

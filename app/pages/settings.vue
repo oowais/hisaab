@@ -2,6 +2,7 @@
 import { getVersion } from '@tauri-apps/api/app'
 import {
   AlarmClock,
+  Archive,
   BatteryFull,
   Bell,
   BellRing,
@@ -216,8 +217,13 @@ async function setDesktop(f: () => Promise<void>) {
       />
     </template>
 
-    <h2 class="section-title">Devices</h2>
+    <h2 class="section-title">Data</h2>
     <div class="pane rows">
+      <NuxtLink to="/archive" class="item link">
+        <Archive :size="20" class="muted" />
+        <span class="flex">Ended and archived</span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
       <NuxtLink to="/sync" class="item link">
         <RefreshCw :size="20" class="muted" />
         <span class="flex stack">

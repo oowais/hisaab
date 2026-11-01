@@ -272,7 +272,7 @@ Milestone 6 checklist:
 - [x] `crates/sync` (iroh, Befikr's): pairing by `hisaab://pair?…` link / QR, change exchange, own ALPN; two-device test
 - [x] App: sync commands, `data-changed` / `sync-changed` events, nudge after writes; Android background sync (WorkManager, JNI `syncOnce`) re-arms reminders
 - [x] Backups as SQLite snapshots (`.db`, not JSON as first planned: same as Befikr, restores everything): daily to a folder (keep 7), export, restore (keeps this device's sync id, peers and shown reminders); desktop in Rust, Android in Kotlin (SAF)
-- [x] UI: Sync (on/off, name, devices, QR / scan / paste link), Conflicts, Backup; sync dot and stale hint on Upcoming; Settings → Devices
+- [x] UI: Sync (on/off, name, devices, QR / scan / paste link), Conflicts, Backup; sync dot and stale hint on Upcoming; Settings → Data
 - [ ] Check on real devices: pairing phone ↔ computer, QR scan (camera), background sync, Android backup folder (Kotlin only compiles in CI)
 
 **Next:** milestone 7 — v1.1: Stats, calendar month view, charge overrides UI, archive view, variable bills, Android widget.

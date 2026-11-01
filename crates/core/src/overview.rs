@@ -216,6 +216,18 @@ impl Store {
     }
 }
 
+impl Store {
+    /// Archived subscriptions, by name (the Archive screen).
+    pub fn archived(&self, today: NaiveDate) -> Result<Vec<SubscriptionView>> {
+        let main = self.main_currency()?;
+        self.subscriptions()?
+            .into_iter()
+            .filter(|s| s.subscription.archived_at.is_some())
+            .map(|s| self.view(&s, today, &main))
+            .collect()
+    }
+}
+
 /// One lane of the Timeline: a subscription and all its periods.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

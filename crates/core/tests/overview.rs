@@ -98,4 +98,6 @@ fn timeline_has_all_periods_but_not_archived() {
     let lanes = s.timeline(d("2026-01-01")).unwrap();
     let got: Vec<_> = lanes.iter().map(|l| (l.view.subscription.name.as_str(), l.periods.len(), l.view.status)).collect();
     assert_eq!(got, [("A", 2, SubscriptionStatus::Active), ("B", 1, SubscriptionStatus::Ended)]);
+    let archived: Vec<_> = s.archived(d("2026-01-01")).unwrap().into_iter().map(|v| v.subscription.name).collect();
+    assert_eq!(archived, ["C"]);
 }

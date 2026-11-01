@@ -74,6 +74,11 @@ fn overview(db: State<Db>, today: NaiveDate) -> Res<Overview> {
 }
 
 #[tauri::command]
+fn archived(db: State<Db>, today: NaiveDate) -> Res<Vec<SubscriptionView>> {
+    with(&db, |s| s.archived(today))
+}
+
+#[tauri::command]
 fn timeline(db: State<Db>, today: NaiveDate) -> Res<Vec<TimelineLane>> {
     with(&db, |s| s.timeline(today))
 }
@@ -470,6 +475,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             overview,
             timeline,
+            archived,
             detail,
             defaults,
             categories,
