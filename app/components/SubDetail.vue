@@ -220,6 +220,17 @@ async function undoOverride(c: HistoryCharge) {
     .then(changed)
     .catch((e) => toast.show({ message: friendlyError(e, 'undo it') }))
 }
+// ---- Coming: only what differs from the usual (one-time, moved, changed);
+// the next charge is in the card at the top (tap it to change it).
+const special = computed(() => sub.value?.coming.filter((c) => c.extraId || c.isOverride) ?? [])
+const nextCharge = computed<HistoryCharge | null>(() => {
+  const s = sub.value
+  const n = s?.nextCharge
+  if (!s || !n) return null
+  const found = [...s.coming, ...s.history].find((c) => !c.extraId && c.periodId === n.periodId && c.scheduledDate === n.scheduledDate)
+  return found ?? { ...n, inMain: s.nextInMain, overrideId: null }
+})
+
 // ---- One-time charges: add as many as needed; edit or delete one.
 const addingExtra = ref(false)
 const editingExtra = ref<ExtraCharge | null>(null)
@@ -267,11 +278,11 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
           <span v-if="sub.myShare != null && sub.current" class="muted small">
             Shared · yours {{ sub.myShare }}%, {{ money(Math.round((sub.current.amountMinor * sub.myShare) / 100), sub.current.currency) }}
           </span>
-          <span v-if="sub.nextCharge" class="muted small">
-            Next {{ relativeDay(sub.nextCharge.dueDate, today) }} ·
+          <button v-if="sub.nextCharge" type="button" class="muted small next" @click="nextCharge && openCharge(nextCharge)">
+            Next {{ dueIn(sub.nextCharge.dueDate, today) }} ·
             {{ money(sub.nextCharge.amountMinor, sub.nextCharge.currency) }}
             <template v-if="sub.nextCharge.currency !== main && sub.nextInMain != null"> · {{ money(sub.nextInMain, main) }}</template>
-          </span>
+          </button>
           <button v-if="sub.url && sub.status !== 'trial'" type="button" class="link small" @click="visit(sub.url)">
             <ExternalLink :size="14" /> {{ host(sub.url) }}
           </button>
@@ -328,10 +339,10 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
       </ul>
       <button type="button" class="link small add-extra" @click="addingExtra = true"><Plus :size="14" /> One-time charge</button>
 
-      <template v-if="sub.coming.length">
+      <template v-if="special.length">
         <h2 class="section-title">Coming</h2>
         <ul class="pane rows list">
-          <li v-for="c in sub.coming" :key="chargeKey(c)" class="item" @contextmenu="chargeMenu($event, c)">
+          <li v-for="c in special" :key="chargeKey(c)" class="item" @contextmenu="chargeMenu($event, c)">
             <button class="charge" @click="openCharge(c)">
               <span class="flex">
                 {{ shortDay(c.dueDate, today) }}
@@ -432,6 +443,12 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 }
 .price {
   font-size: 1.25rem;
+}
+.next {
+  padding: 0;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
 .add-extra {
   align-self: flex-start;
