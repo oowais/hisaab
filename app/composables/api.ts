@@ -198,6 +198,7 @@ export const api = {
   overview: (today: string) => invoke<Overview>('overview', { today }),
   timeline: (today: string) => invoke<TimelineLane[]>('timeline', { today }),
   archived: (today: string) => invoke<SubscriptionView[]>('archived', { today }),
+  search: (query: string, today: string) => invoke<SubscriptionView[]>('search', { query, today }),
   stats: (today: string, months: number) => invoke<Stats>('stats', { today, months }),
   monthCharges: (day: string, today: string) => invoke<MonthCharges>('month_charges', { day, today }),
   detail: (id: string, today: string) => invoke<Detail>('detail', { id, today }),

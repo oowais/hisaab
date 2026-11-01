@@ -12,6 +12,7 @@ import {
   Ban,
   Pencil,
   Plus,
+  Search,
   Settings,
   TriangleAlert,
 } from 'lucide-vue-next'
@@ -152,6 +153,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
         <h1>Hisaab</h1>
         <SyncDot />
         <button v-if="wide && !empty" class="icon-btn" aria-label="Add a payment" @click="adding = true"><Plus :size="22" /></button>
+        <NuxtLink v-if="!empty" to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
         <NuxtLink to="/calendar" class="icon-btn cal" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
         <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
           <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />

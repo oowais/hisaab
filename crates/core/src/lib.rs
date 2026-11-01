@@ -13,6 +13,7 @@ mod overview;
 mod peers;
 pub mod reminders;
 mod schema;
+mod search;
 mod stats;
 mod store;
 mod subscriptions;

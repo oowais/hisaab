@@ -90,6 +90,12 @@ fn archived(db: State<Db>, today: NaiveDate) -> Res<Vec<SubscriptionView>> {
     with(&db, |s| s.archived(today))
 }
 
+/// Search payments: name, notes, link, plans, category, payment method.
+#[tauri::command]
+fn search(db: State<Db>, query: String, today: NaiveDate) -> Res<Vec<SubscriptionView>> {
+    with(&db, |s| s.search(&query, today))
+}
+
 #[tauri::command]
 fn timeline(db: State<Db>, today: NaiveDate) -> Res<Vec<TimelineLane>> {
     with(&db, |s| s.timeline(today))
@@ -552,6 +558,7 @@ pub fn run() {
             overview,
             timeline,
             archived,
+            search,
             stats,
             month_charges,
             detail,

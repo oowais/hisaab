@@ -21,6 +21,7 @@ onMounted(async () => {
       .catch(() => {}),
   )
   handleBackButton().catch(() => {})
+  window.addEventListener('keydown', searchKey)
   // A reminder opens the app on its subscription (or its snooze sheet):
   // Android notification (cold start or while open), desktop notification.
   const launch = await native.takeLaunchRoute().then(
@@ -40,6 +41,17 @@ onMounted(async () => {
   // After an update, on the home screen (not over a notification's screen).
   if (route.path === '/') whatsNew.checkAfterUpdate()
 })
+
+/** / or Ctrl+F: search (computers), unless typing or a sheet is open. */
+function searchKey(e: KeyboardEvent) {
+  const k = e.key.toLowerCase()
+  const isSearch = k === '/' ? !e.ctrlKey && !e.metaKey : k === 'f' && (e.ctrlKey || e.metaKey)
+  if (!isSearch || e.altKey || e.repeat) return
+  const el = e.target as HTMLElement | null
+  if (el?.closest('input, textarea, select, [contenteditable="true"]') || document.querySelector('.sheet')) return
+  e.preventDefault()
+  if (route.path !== '/search') router.push('/search')
+}
 </script>
 
 <template>
