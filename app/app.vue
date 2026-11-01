@@ -30,6 +30,8 @@ onMounted(async () => {
   if (launch) await router.push(launch)
   addPluginListener('reminders', 'launchRoute', (e: { route: string }) => router.push(e.route)).catch(() => {})
   listen<string>('open-route', (e) => router.push(e.payload)).catch(() => {})
+  // Another device's changes merged (sync): screens reload.
+  listen('data-changed', changed).catch(() => {})
   // The first screen's data, then the splash goes; rates catch up after.
   await useOverview().ready()
   releaseSplash()

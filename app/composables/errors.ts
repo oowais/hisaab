@@ -22,3 +22,11 @@ export function friendlyError(e: unknown, doing = 'do that'): string {
   if (!RAW.test(text) && /^[A-Z]/.test(text) && /[.!?]$/.test(text)) return text
   return `Couldn’t ${doing}. Try again.`
 }
+
+/** A backup's last error (raw from Rust or Android), worded. */
+export function friendlyBackupError(raw: string): string {
+  if (/permission|denied|os error|no such file|read-only|EACCES|ENOENT|SecurityException/i.test(raw)) {
+    return 'Couldn’t write to the backup folder. Choose it again.'
+  }
+  return friendlyError(raw, 'back up')
+}

@@ -183,7 +183,7 @@ Icons: bundle [Simple Icons](https://simpleicons.org) SVGs for brands (offline);
 
 - Copy Befikr's engine. Synced tables: everything except `fx_rate`.
 - Conflict special case: two devices both change price offline → overlapping periods. Apply LWW, then if overlap detected, surface in the conflict view rather than auto-merge. Befikr's conflicts are per field; overlaps get their own row-level "overlap" entry in the same view.
-- Daily export to Syncthing folder (keep 7), manual export/import (JSON), same as Befikr.
+- Daily export to Syncthing folder (keep 7), manual export/import, same as Befikr (SQLite snapshots, `.db`).
 
 ## 10. Milestones
 
@@ -207,8 +207,8 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 | 3   | MVP UI                         | Done (Nov 1, 2026)                                                                            |
 | 4   | Timeline                       | Done (Nov 1, 2026)                                                                            |
 | 5   | Notifications                  | Done (Nov 1, 2026): needs a release to check on Android                                       |
-| 6   | Sync + backup                  | Next                                                                                          |
-| 7   | v1.1                           | —                                                                                             |
+| 6   | Sync + backup                  | Done (Nov 1, 2026): needs a release to check pairing and background sync on Android           |
+| 7   | v1.1                           | Next                                                                                          |
 
 Milestone 1 checklist:
 
@@ -265,7 +265,17 @@ Milestone 5 checklist:
 - [x] Re-armed on start and after every change; reminder time setting; Android permission rows in Settings; in-app snooze sheet (`/sub/<id>?snooze=1`)
 - [ ] Check on a phone: Kotlin only compiles in CI (no local `javac`); exact alarm + notification + overlay on a real device; Windows toast actions
 
-**Next:** milestone 6 — sync + backup: Befikr's iroh P2P sync (pairing by QR, LWW per field, conflict view incl. overlapping periods), daily export to a folder (keep 7), manual export / import.
+Milestone 6 checklist:
+
+- [x] Core (`sync.rs`, `conflicts.rs`, `peers.rs`, Befikr's): change-log triggers on every synced table (not `fx_rate`, `reminder_state`), HLC, per-field newest-wins merge, conflicts for this device's lost edits, backfill of data from before sync
+- [x] Overlapping periods after a merge (price changed on two devices): one `overlap` conflict per subscription; keeping one drops the other and closes the period before it
+- [x] `crates/sync` (iroh, Befikr's): pairing by `hisaab://pair?…` link / QR, change exchange, own ALPN; two-device test
+- [x] App: sync commands, `data-changed` / `sync-changed` events, nudge after writes; Android background sync (WorkManager, JNI `syncOnce`) re-arms reminders
+- [x] Backups as SQLite snapshots (`.db`, not JSON as first planned: same as Befikr, restores everything): daily to a folder (keep 7), export, restore (keeps this device's sync id, peers and shown reminders); desktop in Rust, Android in Kotlin (SAF)
+- [x] UI: Sync (on/off, name, devices, QR / scan / paste link), Conflicts, Backup; sync dot and stale hint on Upcoming; Settings → Devices
+- [ ] Check on real devices: pairing phone ↔ computer, QR scan (camera), background sync, Android backup folder (Kotlin only compiles in CI)
+
+**Next:** milestone 7 — v1.1: Stats, calendar month view, charge overrides UI, archive view, variable bills, Android widget.
 
 ### Backlog (Befikr features not copied yet)
 

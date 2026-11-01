@@ -88,10 +88,12 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
   <main class="page">
     <header class="topbar">
       <h1>Hisaab</h1>
+      <SyncDot />
       <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
         <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
       </NuxtLink>
     </header>
+    <SyncStaleHint />
 
     <p v-if="error" class="error">{{ error }}</p>
 

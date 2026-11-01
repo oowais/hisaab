@@ -180,3 +180,26 @@ fn not_a_backup_is_refused() {
     assert!(a.import_from(file.to_str().unwrap()).is_err());
     std::fs::remove_file(file).unwrap();
 }
+
+#[test]
+fn data_from_before_sync_is_sent_too() {
+    let path = std::env::temp_dir().join(format!("hisaab-backfill-{}.db", std::process::id()));
+    let p = path.to_str().unwrap();
+    {
+        let mut s = Store::open(p).unwrap();
+        add(&mut s, "Rent");
+    }
+    // What an app from before sync left: rows, no change log.
+    {
+        let c = rusqlite::Connection::open(p).unwrap();
+        c.execute_batch("DELETE FROM changes; UPDATE sync_state SET backfilled = 0;").unwrap();
+    }
+    let a = Store::open(p).unwrap();
+    let (mut b, _) = device();
+    sync(&a, &mut b, &mut 0);
+    assert_eq!(names(&b), ["Rent"]);
+    assert_eq!(b.subscriptions().unwrap()[0].periods.len(), 1);
+    for ext in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{p}{ext}"));
+    }
+}

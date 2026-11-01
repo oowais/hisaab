@@ -43,3 +43,16 @@ export function intervalText(everyN: number, unit: string): string {
   if (everyN === 1) return { day: 'daily', week: 'weekly', month: 'monthly', year: 'yearly' }[unit] ?? unit
   return `every ${everyN} ${unit}s`
 }
+
+/** "25 min", "2h", "3d" (sync and backup ages). */
+export function span(ms: number): string {
+  const MIN = 60_000
+  const HOUR = 60 * MIN
+  if (ms < HOUR) return `${Math.max(1, Math.round(ms / MIN))} min`
+  if (ms < 24 * HOUR) return `${Math.round(ms / HOUR)}h`
+  return `${Math.round(ms / (24 * HOUR))}d`
+}
+
+/** An instant as a day and time: "3 Nov, 21:30". */
+export const instantLabel = (ms: number) =>
+  new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })

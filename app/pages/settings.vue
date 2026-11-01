@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, BatteryFull, Bell, BellRing, Check, Clock, Coins, Download, Power, WifiOff } from 'lucide-vue-next'
+import {
+  AlarmClock,
+  BatteryFull,
+  Bell,
+  BellRing,
+  Check,
+  ChevronRight,
+  Clock,
+  Coins,
+  Download,
+  FolderSync,
+  Power,
+  RefreshCw,
+  WifiOff,
+} from 'lucide-vue-next'
 import type { DesktopPrefs, ReminderStatus, Settings } from '~/composables/api'
 
 const version = ref('')
@@ -72,6 +86,15 @@ async function allow(f: () => Promise<void>) {
   await f().catch(() => {})
   setTimeout(loadStatus, 800)
 }
+
+// ---- Sync: on or off, how many devices
+const { st: syncSt } = useSyncStatus()
+const syncLine = computed(() => {
+  const s = syncSt.value
+  if (!s || s.mode === 'off') return 'Off · keep your other devices up to date'
+  const n = s.peers.length
+  return n ? `On · ${n} ${n === 1 ? 'device' : 'devices'}` : 'On · no devices yet'
+})
 
 // ---- Desktop: this computer's startup
 const desktop = ref<DesktopPrefs | null>(null)
@@ -193,6 +216,26 @@ async function setDesktop(f: () => Promise<void>) {
       />
     </template>
 
+    <h2 class="section-title">Devices</h2>
+    <div class="pane rows">
+      <NuxtLink to="/sync" class="item link">
+        <RefreshCw :size="20" class="muted" />
+        <span class="flex stack">
+          <span>Sync</span>
+          <span class="muted small">{{ syncLine }}</span>
+        </span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
+      <NuxtLink to="/backup" class="item link">
+        <FolderSync :size="20" class="muted" />
+        <span class="flex stack">
+          <span>Backup</span>
+          <span class="muted small">Daily copy to a folder, export, restore</span>
+        </span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
+    </div>
+
     <h2 class="section-title">Theme</h2>
     <div class="seg" role="radiogroup" aria-label="Theme">
       <button
@@ -259,6 +302,10 @@ async function setDesktop(f: () => Promise<void>) {
 </template>
 
 <style scoped>
+a.item {
+  color: inherit;
+  text-decoration: none;
+}
 .whats-new {
   color: var(--text);
   text-decoration: underline;

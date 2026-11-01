@@ -2,6 +2,13 @@
 
 One short note per milestone. Per-release notes come from the commits (`.github/scripts/release-notes.sh`).
 
+## Milestone 6 — Sync and backup (Nov 1, 2026)
+
+- Sync between your devices, peer to peer (Befikr's engine): pair by QR code or link, end-to-end encrypted, no account or server of ours.
+- Newest change wins per field; your overwritten edits show on the Conflicts page to keep or drop. A price changed on two devices before they synced shows as one card: keep one of the two changes.
+- Android syncs in the background (about every 15 minutes) so reminders follow changes made elsewhere.
+- Daily backup to a folder you pick (keeps 7), export a copy, restore from a backup.
+
 ## Milestone 5 — Notifications (Nov 1, 2026)
 
 - Reminders before each charge ("Netflix · €4.99 in 3 days"), at a time you choose; per payment or a default number of days.

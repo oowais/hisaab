@@ -98,6 +98,55 @@ export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 /** Android: what reminders need (desktop: none of this). */
 export type ReminderStatus = { notifications: boolean; exactAlarms: boolean; batteryUnrestricted: boolean }
 
+export type SyncMode = 'off' | 'relay'
+export type Peer = {
+  endpoint: string
+  device: string
+  name: string
+  theirSeq: number
+  pairedAt: number
+  lastSyncAt: number | null
+  /** 'phone' | 'computer', '' until that device has told us. */
+  kind: string
+}
+export type SyncStatus = {
+  mode: SyncMode
+  name: string
+  running: boolean
+  syncing: boolean
+  endpoint: string
+  peers: Peer[]
+  pairing: { untilMs: number; link: string } | null
+  /** Worded for the user. */
+  lastError: string | null
+  /** The same, raw (network / protocol). */
+  lastErrorDetail: string | null
+  conflicts: number
+}
+/** A period as an overlap conflict shows it. */
+export type ConflictPeriod = {
+  start: string
+  end: string | null
+  amountMinor: number
+  currency: string
+  everyN: number
+  unit: Unit
+  status: PeriodStatus
+}
+export type Conflict = {
+  id: string
+  table: string
+  rowId: string
+  /** A column, or 'overlap' (two periods covering the same days; values are ConflictPeriods). */
+  field: string
+  label: string
+  lostValue: unknown
+  wonValue: unknown
+  wonBy: string | null
+  at: number
+}
+export type BackupStatus = { folder: string | null; lastAt: number | null; lastError: string | null }
+
 export type NewSubscription = {
   fields: SubscriptionFields
   terms: Terms
@@ -149,6 +198,28 @@ export const api = {
   setStartHidden: (on: boolean) => invoke<void>('set_start_hidden', { on }),
   refreshRates: (today: string) => invoke<boolean>('refresh_rates', { today }),
   ensureRates: (from: string, today: string) => invoke<boolean>('ensure_rates', { from, today }),
+  importBackup: (path: string) => invoke<void>('import_backup', { path }),
+  syncStatus: () => invoke<SyncStatus>('sync_status'),
+  setSyncMode: (mode: SyncMode) => invoke<void>('set_sync_mode', { mode }),
+  setDeviceName: (name: string) => invoke<void>('set_device_name', { name }),
+  startPairing: () => invoke<void>('start_pairing'),
+  stopPairing: () => invoke<void>('stop_pairing'),
+  pairWithLink: (link: string) => invoke<void>('pair_with_link', { link }),
+  unpair: (endpoint: string) => invoke<void>('unpair', { endpoint }),
+  syncNow: () => invoke<void>('sync_now'),
+  conflicts: () => invoke<Conflict[]>('conflicts'),
+  resolveConflict: (id: string, useMine: boolean) => invoke<void>('resolve_conflict', { id, useMine }),
+}
+
+/** Backups: the app's commands on desktop, the Android plugin's on a phone. */
+const backupCmd = (name: string) => (isAndroid ? `plugin:reminders|${name}` : name)
+export const backups = {
+  status: () => invoke<BackupStatus>(backupCmd('backup_status')),
+  pickFolder: () => invoke<BackupStatus>(backupCmd('pick_backup_folder')),
+  clearFolder: () => invoke<BackupStatus>(backupCmd('clear_backup_folder')),
+  now: () => invoke<BackupStatus>(backupCmd('backup_now')),
+  exportCopy: () => invoke<{ saved: boolean }>(backupCmd('export_backup')),
+  pickImportFile: () => invoke<{ path?: string }>(backupCmd('pick_import_file')),
 }
 
 /** The Android plugin's own commands (they reject on desktop). */
