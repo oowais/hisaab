@@ -13,8 +13,6 @@ export type Template = {
   currency?: string
   every?: number
   unit?: Unit
-  /** Variable bills (electricity): the amount is an estimate. */
-  estimated?: boolean
   /** Extra words that should find it ("tv", "music"). */
   tags?: string
   /** Where to cancel (or manage) it; becomes the payment's link. */
@@ -147,9 +145,9 @@ export const TEMPLATES: Template[] = [
   // Home, insurance, taxes
   bill('deutschlandticket', 'Deutschlandticket', 'lu:TrainFront', '#E30613', { currency: 'EUR', tags: 'train transport bahn' }),
   bill('rent', 'Rent', 'lu:House', '#6B7A8F', { tags: 'miete home' }),
-  bill('electricity', 'Electricity', 'lu:Zap', '#C48A2C', { estimated: true, tags: 'strom power' }),
-  bill('gas', 'Gas', 'lu:Flame', '#E0644F', { estimated: true, tags: 'heating heizung' }),
-  bill('water', 'Water', 'lu:Droplet', '#2F8FB0', { estimated: true, tags: 'wasser utilities' }),
+  bill('electricity', 'Electricity', 'lu:Zap', '#C48A2C', { tags: 'strom power' }),
+  bill('gas', 'Gas', 'lu:Flame', '#E0644F', { tags: 'heating heizung' }),
+  bill('water', 'Water', 'lu:Droplet', '#2F8FB0', { tags: 'wasser utilities' }),
   bill('rundfunkbeitrag', 'Rundfunkbeitrag', 'lu:Radio', '#4E5D6C', { currency: 'EUR', every: 3, unit: 'month', tags: 'gez tv radio' }),
   bill('haftpflicht', 'Haftpflichtversicherung', 'lu:Shield', '#3F7CAC', { currency: 'EUR', unit: 'year', tags: 'insurance liability' }),
   bill('hausrat', 'Hausratversicherung', 'lu:Sofa', '#9A5BC4', { currency: 'EUR', unit: 'year', tags: 'insurance contents' }),

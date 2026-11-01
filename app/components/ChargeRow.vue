@@ -104,11 +104,11 @@ function open() {
           <span class="name">{{ sub.name }}</span>
           <span class="when muted small">
             {{ when }}<template v-if="charge.extraId"> · {{ charge.label ?? 'one-time' }}</template
-            ><template v-if="charge.isOverride"> · moved</template><template v-if="charge.estimated"> · about</template>
+            ><template v-if="charge.isOverride"> · moved</template>
           </span>
         </span>
         <span class="amount">
-          <span>{{ charge.estimated ? '~' : '' }}{{ original }}</span>
+          <span>{{ original }}</span>
           <span v-if="mine" class="muted small">yours {{ mine }}</span>
           <span v-else-if="converted" class="muted small">{{ converted }}</span>
         </span>

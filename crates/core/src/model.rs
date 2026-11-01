@@ -37,7 +37,8 @@ text_enum!(
 text_enum!(PeriodStatus { Trial => "trial", Active => "active", Paused => "paused" });
 text_enum!(Unit { Day => "day", Week => "week", Month => "month", Year => "year" });
 text_enum!(
-    /// `Estimated`: variable bills (electricity); the amount is a guess.
+    /// Stored with each period. `Estimated` was "amount varies" (dropped:
+    /// every amount is what was entered); kept so old rows and peers parse.
     AmountKind { Fixed => "fixed", Estimated => "estimated" }
 );
 text_enum!(
@@ -191,7 +192,6 @@ pub struct Charge {
     pub currency: String,
     pub settled_amount_minor: Option<i64>,
     pub settled_currency: Option<String>,
-    pub estimated: bool,
     pub status: ChargeStatus,
     pub is_override: bool,
     /// A one-time charge (not from the schedule): its id; `period_id` is empty.

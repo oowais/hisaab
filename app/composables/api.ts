@@ -17,6 +17,7 @@ export type Terms = {
   everyN: number
   unit: Unit
   planLabel: string | null
+  /** Always 'fixed' now ("amount varies" was dropped); old rows may say 'estimated'. */
   amountKind: 'fixed' | 'estimated'
 }
 
@@ -55,7 +56,6 @@ export type Charge = {
   currency: string
   settledAmountMinor: number | null
   settledCurrency: string | null
-  estimated: boolean
   status: 'upcoming' | 'paid'
   isOverride: boolean
   /** A one-time charge (not from the schedule): its id; `periodId` is ''. */

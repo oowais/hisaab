@@ -156,8 +156,7 @@ impl Store {
                 Reminder {
                     subscription_id: s.subscription.id.clone(),
                     title: format!(
-                        "{name} · {}{} {}",
-                        if c.estimated { "~" } else { "" },
+                        "{name} · {} {}",
                         money_text(c.amount_minor, &c.currency),
                         when_text(day, c.due_date)
                     ),

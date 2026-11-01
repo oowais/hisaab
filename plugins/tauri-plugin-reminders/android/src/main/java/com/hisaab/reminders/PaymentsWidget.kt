@@ -62,7 +62,7 @@ class PaymentsWidget : AppWidgetProvider() {
             return parseOutcome(Native.widget(dbPath, tz(), ROWS.size))?.optJSONObject("widget")
         }
 
-        private fun money(minor: Long, code: String, estimated: Boolean = false): String {
+        private fun money(minor: Long, code: String): String {
             val f = NumberFormat.getCurrencyInstance()
             val digits = runCatching { Currency.getInstance(code) }.getOrNull()?.let {
                 f.currency = it
@@ -70,8 +70,7 @@ class PaymentsWidget : AppWidgetProvider() {
             } ?: 2
             f.minimumFractionDigits = digits
             f.maximumFractionDigits = digits
-            val text = runCatching { f.format(minor / Math.pow(10.0, digits.toDouble())) }.getOrDefault("$minor $code")
-            return if (estimated) "~$text" else text
+            return runCatching { f.format(minor / Math.pow(10.0, digits.toDouble())) }.getOrDefault("$minor $code")
         }
 
         private fun whenText(today: LocalDate, due: LocalDate): String = when (val n = ChronoUnit.DAYS.between(today, due)) {
@@ -107,7 +106,7 @@ class PaymentsWidget : AppWidgetProvider() {
                 views.setViewVisibility(ids[0], View.VISIBLE)
                 views.setTextViewText(ids[1], c.optString("name"))
                 views.setTextViewText(ids[2], whenText(today, LocalDate.parse(c.getString("dueDate"))))
-                views.setTextViewText(ids[3], money(c.optLong("amountMinor"), c.optString("currency"), c.optBoolean("estimated")))
+                views.setTextViewText(ids[3], money(c.optLong("amountMinor"), c.optString("currency")))
                 views.setOnClickPendingIntent(ids[0], launchPendingIntent(ctx, id, "/sub/$id"))
             }
             mgr.updateAppWidget(widgetId, views)

@@ -92,7 +92,6 @@ fn would_have(p: &Period, until: NaiveDate, today: NaiveDate) -> Vec<Charge> {
             currency: p.terms.currency.clone(),
             settled_amount_minor: None,
             settled_currency: None,
-            estimated: false,
             status: if d > today { ChargeStatus::Upcoming } else { ChargeStatus::Paid },
             is_override: false,
             extra_id: None,

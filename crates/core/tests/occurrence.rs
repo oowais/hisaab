@@ -153,18 +153,3 @@ fn status_follows_today_and_next_charge() {
     assert_eq!(cs.iter().map(|c| c.status).collect::<Vec<_>>(), [ChargeStatus::Paid, ChargeStatus::Upcoming]);
     assert_eq!(next_charge(&[p], &[], d("2026-02-11")).unwrap().due_date, d("2026-03-10"));
 }
-
-#[test]
-fn variable_bill_estimates_from_the_last_three_real_amounts() {
-    let t = Terms { amount_kind: AmountKind::Estimated, ..monthly(5000) };
-    let p = active("p", t, "2026-01-05", "2026-01-05", None);
-    let real = |due: &str, a: i64| ChargeOverride { actual_amount_minor: Some(a), ..ov(OverrideKind::AmountChanged, due) };
-    let os = [real("2026-01-05", 9000), real("2026-02-05", 6000), real("2026-03-05", 6100), real("2026-04-05", 6200)];
-    let cs = occurrences(std::slice::from_ref(&p), &os, d("2026-01-01"), d("2026-06-30"), d("2026-04-20"));
-    let amounts: Vec<_> = cs.iter().map(|c| (c.amount_minor, c.estimated)).collect();
-    // Real ones as entered; after them the average of the last three.
-    assert_eq!(amounts, [(9000, false), (6000, false), (6100, false), (6200, false), (6100, true), (6100, true)]);
-    // Nothing entered yet: the period's own guess.
-    let cs = occurrences(&[p], &[], d("2026-01-01"), d("2026-01-31"), d("2026-01-01"));
-    assert_eq!(cs[0].amount_minor, 5000);
-}

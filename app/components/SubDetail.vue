@@ -172,10 +172,7 @@ const price = computed(() => {
   const p = sub.value?.current
   if (!p) return ''
   if (p.status === 'trial' && !p.amountMinor) return 'Free trial'
-  // A variable bill: the estimate learned from its real amounts (the next charge's).
-  const next = sub.value?.nextCharge
-  const amount = p.amountKind === 'estimated' && next?.estimated && next.periodId === p.id ? next.amountMinor : p.amountMinor
-  return `${p.amountKind === 'estimated' ? '~' : ''}${money(amount, p.currency)} ${intervalText(p.everyN, p.unit)}`
+  return `${money(p.amountMinor, p.currency)} ${intervalText(p.everyN, p.unit)}`
 })
 const periods = computed(() =>
   [...(sub.value?.periods ?? [])].reverse().map((p) => ({
@@ -340,7 +337,6 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
                 {{ shortDay(c.dueDate, today) }}
                 <span v-if="c.extraId" class="muted small">· {{ c.label ?? 'one-time' }}</span>
                 <span v-else-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
-                <span v-else-if="c.estimated" class="muted small">· about</span>
               </span>
               <span class="amount">
                 <span>{{ money(c.amountMinor, c.currency) }}</span>
@@ -363,7 +359,6 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
                 {{ shortDay(c.dueDate, today) }}
                 <span v-if="c.extraId" class="muted small">· {{ c.label ?? 'one-time' }}</span>
                 <span v-else-if="c.isOverride" class="muted small">· {{ c.dueDate !== c.scheduledDate ? 'moved' : 'changed' }}</span>
-                <span v-else-if="c.estimated" class="small hint">· add the real amount</span>
               </span>
               <span class="amount">
                 <span>{{ money(c.settledAmountMinor ?? c.amountMinor, c.settledCurrency ?? c.currency) }}</span>
@@ -508,9 +503,6 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
 .flex {
   flex: 1;
   min-width: 0;
-}
-.hint {
-  color: var(--orange);
 }
 .charge {
   flex: 1;

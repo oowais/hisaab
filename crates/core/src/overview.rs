@@ -249,7 +249,6 @@ pub struct WidgetCharge {
     pub due_date: NaiveDate,
     pub amount_minor: i64,
     pub currency: String,
-    pub estimated: bool,
 }
 
 /// One calendar month's charges (the Calendar screen).
@@ -302,7 +301,6 @@ impl Store {
                 due_date: u.charge.due_date,
                 amount_minor: u.charge.amount_minor,
                 currency: u.charge.currency.clone(),
-                estimated: u.charge.estimated,
             })
             .collect();
         Ok(Widget { main_currency: o.main_currency, monthly_total: (o.yearly_total + 6) / 12, today, charges })

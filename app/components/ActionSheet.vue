@@ -36,8 +36,6 @@ const needsAmount = computed(() => ['price', 'restart', 'convert'].includes(prop
 const amountText = ref(base.value ? (base.value.amountMinor ? amountTextOf(base.value) : '') : '')
 const currency = ref(base.value?.currency ?? 'EUR')
 const planLabel = ref(base.value?.planLabel ?? '')
-// Variable bills: the amount is a guess, learned from the real ones entered.
-const estimated = ref(base.value?.amountKind === 'estimated')
 function amountTextOf(t: Terms) {
   return (t.amountMinor / 10 ** minorDigits(t.currency)).toFixed(minorDigits(t.currency))
 }
@@ -87,7 +85,7 @@ async function run() {
       everyN: b.everyN,
       unit: b.unit,
       planLabel: planLabel.value.trim() || null,
-      amountKind: estimated.value ? 'estimated' : 'fixed',
+      amountKind: 'fixed',
     }
   }
   busy.value = true
@@ -152,12 +150,6 @@ async function run() {
         <button type="button" class="field currency" aria-label="Currency" @click="pickingCurrency = true">{{ currency }}</button>
       </div>
       <input v-if="action === 'price'" v-model="planLabel" class="field" placeholder="Plan (optional)" aria-label="Plan" />
-      <div v-if="needsAmount" class="kinds">
-        <button type="button" class="chip" :class="{ chosen: estimated }" :aria-pressed="estimated" @click="estimated = !estimated">
-          Amount varies
-        </button>
-        <span v-if="estimated" class="muted small">A guess; after a few real bills, their average</span>
-      </div>
 
       <button type="button" class="pick" @click="picking = 'day'">
         <span class="muted small">{{ dayLabel }}</span>
@@ -225,12 +217,6 @@ async function run() {
   align-items: center;
   justify-content: space-between;
   padding-left: 4px;
-}
-.kinds {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 .amount-row {
   display: flex;

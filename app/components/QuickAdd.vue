@@ -33,7 +33,6 @@ const everyN = ref(1)
 const unit = ref<Unit>('month')
 const start = ref(today)
 const kind = ref<Kind>('subscription')
-const estimated = ref(false)
 const amountInput = ref<HTMLInputElement>()
 
 onMounted(async () => {
@@ -56,7 +55,6 @@ function choose(t: Template | null) {
     kind.value = t.kind
     everyN.value = t.every ?? 1
     unit.value = t.unit ?? 'month'
-    estimated.value = !!t.estimated
     if (t.currency) currency.value = t.currency
     if (t.cancelUrl && !url.value.trim()) url.value = t.cancelUrl
   }
@@ -170,7 +168,7 @@ async function save() {
         everyN: everyN.value,
         unit: unit.value,
         planLabel: planLabel.value.trim() || null,
-        amountKind: estimated.value ? 'estimated' : 'fixed',
+        amountKind: 'fixed',
       },
       startDate: start.value,
       anchorDate: null,
@@ -289,9 +287,6 @@ async function save() {
           <template #extras>
             <button type="button" class="chip" :class="trial ? 'chosen' : 'off'" @click="trial = !trial">
               <Plus v-if="!trial" :size="14" /> Free trial
-            </button>
-            <button type="button" class="chip" :class="estimated ? 'chosen' : 'off'" @click="estimated = !estimated">
-              <Plus v-if="!estimated" :size="14" /> Amount varies
             </button>
             <button v-if="!planOpen && !planLabel" type="button" class="chip off" @click="openPlan"><Plus :size="14" /> Plan</button>
           </template>
