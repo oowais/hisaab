@@ -1,0 +1,50 @@
+name: web
+
+# Format, lint, type check (vp check), unit tests, Nuxt build + typecheck:
+# on PRs, and on main after a merge.
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        'app/**',
+        'test/**',
+        'public/**',
+        'package.json',
+        'pnpm-lock.yaml',
+        'pnpm-workspace.yaml',
+        'nuxt.config.ts',
+        'vite.config.ts',
+        '.github/workflows/web.yml',
+      ]
+  pull_request:
+    paths:
+      [
+        'app/**',
+        'test/**',
+        'public/**',
+        'package.json',
+        'pnpm-lock.yaml',
+        'pnpm-workspace.yaml',
+        'nuxt.config.ts',
+        'vite.config.ts',
+        '.github/workflows/web.yml',
+      ]
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: '24'
+          cache: true
+      - run: vp check
+      - run: vp test
+      - run: vp run generate
+      - run: vp run typecheck

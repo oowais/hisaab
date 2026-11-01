@@ -1,0 +1,247 @@
+name: release
+
+# Builds and releases on every push to main that changes the app (or by
+# hand): the APK, the Linux .deb + Arch PKGBUILD and the Windows installer,
+# all attached to one GitHub release. Installed apps update from it in-app
+# (Android: APK, Windows: signed installer via latest.json; Linux:
+# scripts/install-arch.sh). PRs get lint and tests only (core.yml, web.yml).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'src-tauri/**'
+      - 'crates/**'
+      - 'plugins/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nuxt.config.ts'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/release.yml'
+      - '.github/scripts/**'
+      - 'packaging/**'
+      - '!**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write # publish the release
+
+# One build per branch at a time: a queued main build computes its version
+# only after the previous release has tagged.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to 26 (Android SDK/NDK come from the image)
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags + history for the version bump
+
+      # Semver 0.x.y from Conventional Commits (.github/scripts/next-version.sh).
+      # Android versionCode derives from it, so every release is an update.
+      - name: Version
+        id: version
+        run: |
+          V=$(.github/scripts/next-version.sh)
+          R=true
+          if [ "$V" = none ]; then
+            V=$(git describe --tags --abbrev=0 --match 'v0.*'); V=${V#v}
+            R=false
+          fi
+          echo "RELEASE=$R" >> "$GITHUB_ENV"
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          # For the desktop-release job.
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "release=$R" >> "$GITHUB_OUTPUT"
+          echo "Version $V"
+          jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
+          .github/scripts/release-notes.sh > release-notes.md
+          cat release-notes.md
+          VERSION=$V node .github/scripts/whats-new.mjs
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Runner image ships Android SDK + NDK (ANDROID_HOME, ANDROID_NDK_LATEST_HOME).
+      - run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+
+      - uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: '24'
+          cache: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: vp exec tauri android init --ci
+
+      # App icon (adaptive + night + monochrome) and notification icon.
+      # Source: src-tauri/android/icon/gen.py
+      - name: Apply Android resources
+        run: cp -r src-tauri/android/res/. src-tauri/gen/android/app/src/main/res/
+
+      # Window and Android splash in the page background (hisaab_window, from
+      # the reminders plugin), so a cold start goes splash → page without a
+      # white flash. Patches the generated theme, whatever its name.
+      - name: Theme the window background
+        run: |
+          for f in src-tauri/gen/android/app/src/main/res/values{,-night}/themes.xml; do
+            grep -q 'Customize your theme here' "$f" || { echo "::error::$f changed shape"; exit 1; }
+            sed -i 's|<!-- Customize your theme here. -->|<item name="android:windowBackground">@color/hisaab_window</item><item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/hisaab_window</item>|' "$f"
+            cat "$f"
+          done
+
+      - run: vp exec tauri android build --apk --target aarch64 --ci
+
+      # Same key every build so updates install over the previous version.
+      # The key is a repo secret (src-tauri/android/README.md), never committed.
+      - name: Sign
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD not set (see src-tauri/android/README.md)"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/sideload.p12"
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" | head -1)
+          "$BT/zipalign" -f -p 4 "$APK" aligned.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/sideload.p12" --ks-type PKCS12 --ks-pass env:KEYSTORE_PASSWORD \
+            --ks-key-alias hisaab --out hisaab.apk aligned.apk
+          rm "$RUNNER_TEMP/sideload.p12"
+          "$BT/apksigner" verify hisaab.apk
+          ls -la hisaab.apk
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hisaab-${{ env.VERSION }}-apk
+          path: hisaab.apk
+
+      # Only main publishes; a manual run on another branch just uploads the artifact.
+      - uses: softprops/action-gh-release@v3
+        if: github.ref == 'refs/heads/main' && env.RELEASE == 'true'
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Hisaab ${{ env.VERSION }}
+          body_path: release-notes.md
+          make_latest: true
+          target_commitish: ${{ github.sha }}
+          files: hisaab.apk
+
+  # Linux: the .deb, and the Arch PKGBUILD that repackages it
+  # (scripts/install-arch.sh installs it).
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: .github/scripts/desktop-version.sh
+      - run: node .github/scripts/whats-new.mjs
+      - name: Tauri build dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
+      - uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: '24'
+          cache: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: vp exec tauri build --bundles deb --ci
+      - name: Package
+        run: |
+          DEB="hisaab_${VERSION}_amd64.deb"
+          cp target/release/bundle/deb/*.deb "$DEB"
+          SHA=$(sha256sum "$DEB" | cut -d' ' -f1)
+          sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA/" packaging/arch/PKGBUILD.in > PKGBUILD
+          ls -la "$DEB" PKGBUILD
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hisaab-${{ env.VERSION }}-linux
+          path: |
+            hisaab_*_amd64.deb
+            PKGBUILD
+
+  # Windows: the NSIS installer (unsigned, so SmartScreen asks once).
+  windows:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: '24'
+          cache: true
+      - run: .github/scripts/desktop-version.sh
+      - run: node .github/scripts/whats-new.mjs
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # With the updater key set (repo secrets), the installer is also signed
+      # for in-app updates and latest.json (the updater's manifest) is made.
+      - name: Build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            vp exec tauri build --bundles nsis --ci --config '{"bundle":{"createUpdaterArtifacts":true}}'
+          else
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set: no in-app update for this release"
+            vp exec tauri build --bundles nsis --ci
+          fi
+      - name: Package
+        run: |
+          EXE="hisaab_${VERSION}_x64-setup.exe"
+          cp target/release/bundle/nsis/*-setup.exe "$EXE"
+          ls -la "$EXE"
+          SIG=$(ls target/release/bundle/nsis/*-setup.exe.sig 2>/dev/null | head -1)
+          if [ -n "$SIG" ]; then
+            jq -n --arg v "$VERSION" --arg sig "$(cat "$SIG")" \
+              --arg url "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${EXE}" \
+              '{version: $v, pub_date: (now | todate), platforms: {"windows-x86_64": {signature: $sig, url: $url}}}' > latest.json
+            cat latest.json
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hisaab-${{ env.VERSION }}-windows
+          path: |
+            hisaab_*_x64-setup.exe
+            latest.json
+
+  # After the APK job has created the release: add the desktop files to it.
+  desktop-release:
+    needs: [apk, linux, windows]
+    if: github.ref == 'refs/heads/main' && needs.apk.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: hisaab-${{ needs.apk.outputs.version }}-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ needs.apk.outputs.version }}
+          files: |
+            hisaab_*_amd64.deb
+            PKGBUILD
+            hisaab_*_x64-setup.exe
+            latest.json

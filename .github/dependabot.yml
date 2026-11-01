@@ -1,0 +1,67 @@
+# Dependency updates: once a month, only releases at least a week old, one
+# PR per ecosystem (Tauri on its own, majors on their own). PRs run core.yml
+# and web.yml; merging one pushes to main, which makes a release.
+# Tauri: the crate and @tauri-apps/* must share major.minor, so merge the
+# Cargo and npm Tauri PRs together.
+# Ignored majors need code or tool changes first; upgrade them by hand.
+# vite-plus comes from the pnpm catalog (pnpm-workspace.yaml): `vp upgrade`.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      tauri:
+        patterns: ['tauri', 'tauri-*']
+      rust:
+        patterns: ['*']
+        update-types: [minor, patch]
+      rust-major:
+        patterns: ['*']
+        update-types: [major]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      # vue-tsc has to support it first.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Tracks the Node version in use.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    groups:
+      tauri:
+        patterns: ['@tauri-apps/*']
+      web:
+        patterns: ['*']
+        update-types: [minor, patch]
+      web-major:
+        patterns: ['*']
+        update-types: [major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']

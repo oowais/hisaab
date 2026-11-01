@@ -1,0 +1,43 @@
+name: core
+
+# Rust lint + tests: on PRs, and on main after a merge.
+on:
+  push:
+    branches: [main]
+    paths: ['crates/**', 'src-tauri/**', 'plugins/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/core.yml']
+  pull_request:
+    paths: ['crates/**', 'src-tauri/**', 'plugins/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/core.yml']
+
+concurrency:
+  group: core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # The Tauri app crate needs the Linux webview headers to compile.
+      - name: Tauri build dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev
+      # Tauri's build script expects the frontend output to exist.
+      - run: mkdir -p .output/public
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  # The desktop code will have Windows-only parts (notifications); compile
+  # and lint the app crate there too.
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: New-Item -ItemType Directory -Force .output/public
+      - run: cargo clippy -p hisaab --all-targets -- -D warnings
