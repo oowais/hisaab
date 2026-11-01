@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src-tauri/android/icon/icon-dark.svg" width="96" height="96" alt="Hisaab icon">
+  <img src="src-tauri/android/icon/icon.svg" width="96" height="96" alt="Hisaab icon">
 </p>
 
 <h1 align="center">Hisaab</h1>

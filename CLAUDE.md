@@ -36,7 +36,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · Vite+ 
 - JS: `vp install`, `vp add`, `vp check` (`--fix`), `vp test`, `vp run generate`, `vp run typecheck` (Vue files: `vp check` doesn't type check them). Never npm/npx/bun, ESLint or Prettier. Config in `vite.config.ts`.
 - Rust: `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` (needs `.output/public` to exist: `mkdir -p .output/public` or `vp run generate`).
 - Desktop app: `vp run tauri dev`; local binary `vp run tauri build --debug --no-bundle` → `target/debug/hisaab`. Test with `XDG_DATA_HOME`/`XDG_CONFIG_HOME` pointed at a scratch folder.
-- Icons: edit `src-tauri/android/icon/gen.py`, run it, then `vp run tauri icon src-tauri/android/icon/icon-dark.svg -o src-tauri/icons` and delete `src-tauri/icons/{android,ios}`.
+- Icons: edit `src-tauri/android/icon/gen.py`, run it, then `vp run tauri icon src-tauri/android/icon/icon.svg -o src-tauri/icons` and delete `src-tauri/icons/{android,ios}`.
 
 ## Releases and signing
 

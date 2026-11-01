@@ -28,37 +28,20 @@
     #splash svg {
       width: 96px;
       height: 96px;
-      border-radius: 24px;
-      box-shadow: 0 8px 28px rgb(0 0 0 / 12%);
       animation: splash-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
     #splash span {
       animation: splash-in 0.5s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-    #splash .dark {
-      display: none;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme='light']) #splash {
         background: #0e0e0e;
         color: #fafafa;
       }
-      :root:not([data-theme='light']) #splash .light {
-        display: none;
-      }
-      :root:not([data-theme='light']) #splash .dark {
-        display: block;
-      }
     }
     :root[data-theme='dark'] #splash {
       background: #0e0e0e;
       color: #fafafa;
-    }
-    :root[data-theme='dark'] #splash .light {
-      display: none;
-    }
-    :root[data-theme='dark'] #splash .dark {
-      display: block;
     }
     /* Leaving (composables/useSplash.ts): fades and opens up as the page rises in behind. */
     #splash {
@@ -79,26 +62,28 @@
       }
     }
   </style>
-  <svg class="light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
-    <rect width="108" height="108" rx="26" fill="#F1E9DC" />
-    <g transform="translate(54 54) scale(0.95) translate(-54 -54)">
-      <path d="M30,38 L60,38" fill="none" stroke="#C49A5E" stroke-width="7.0" stroke-linecap="round" />
-      <path d="M70,38 L78,38" fill="none" stroke="#C49A5E" stroke-width="7.0" stroke-linecap="round" />
-      <path d="M30,54 L80,54" fill="none" stroke="#3B2A1A" stroke-width="8.0" stroke-linecap="round" />
-      <path d="M44,70 L72,70" fill="none" stroke="#C49A5E" stroke-width="7.0" stroke-linecap="round" />
-      <path d="M56,44.0 L66.0,54 L56,64.0 L46.0,54 Z" fill="#F1E9DC" />
-      <path d="M56,46.5 L63.5,54 L56,61.5 L48.5,54 Z" fill="#D2553F" />
-    </g>
-  </svg>
-  <svg class="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
-    <rect width="108" height="108" rx="26" fill="#23262B" />
-    <g transform="translate(54 54) scale(0.95) translate(-54 -54)">
-      <path d="M30,38 L60,38" fill="none" stroke="#E8C27F" stroke-width="7.0" stroke-linecap="round" />
-      <path d="M70,38 L78,38" fill="none" stroke="#E8C27F" stroke-width="7.0" stroke-linecap="round" />
-      <path d="M30,54 L80,54" fill="none" stroke="#FFFFFF" stroke-width="8.0" stroke-linecap="round" />
-      <path d="M44,70 L72,70" fill="none" stroke="#E8C27F" stroke-width="7.0" stroke-linecap="round" />
-      <path d="M56,44.0 L66.0,54 L56,64.0 L46.0,54 Z" fill="#23262B" />
-      <path d="M56,46.5 L63.5,54 L56,61.5 L48.5,54 Z" fill="#FFB547" />
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+    <g transform="translate(54 54) scale(1.22) rotate(-8) translate(-54 -54)">
+      <path
+        d="M30,24.5 L78,24.5 L78,84.5 L74,90.5 L70,84.5 L66,90.5 L62,84.5 L58,90.5 L54,84.5 L50,90.5 L46,84.5 L42,90.5 L38,84.5 L34,90.5 L30,84.5 Z"
+        fill="#3B2A1A"
+        fill-opacity="0.18"
+      />
+      <path
+        d="M30,22 L78,22 L78,82 L74,88 L70,82 L66,88 L62,82 L58,88 L54,82 L50,88 L46,82 L42,88 L38,82 L34,88 L30,82 Z"
+        fill="#FBF5EA"
+        stroke="#D8CBB5"
+        stroke-width="0.8"
+        stroke-linejoin="round"
+      />
+      <path d="M38,36 L54,36" fill="none" stroke="#C49A5E" stroke-opacity="1.0" stroke-width="5.5" stroke-linecap="round" />
+      <path d="M62,36 L70,36" fill="none" stroke="#C49A5E" stroke-opacity="1.0" stroke-width="5.5" stroke-linecap="round" />
+      <path d="M38,50 L70,50" fill="none" stroke="#3B2A1A" stroke-opacity="1.0" stroke-width="6.5" stroke-linecap="round" />
+      <path d="M46,64 L64,64" fill="none" stroke="#C49A5E" stroke-opacity="1.0" stroke-width="5.5" stroke-linecap="round" />
+      <path d="M38,75 L50,75" fill="none" stroke="#3B2A1A" stroke-opacity="0.45" stroke-width="2.5" stroke-linecap="round" />
+      <path d="M60,75 L70,75" fill="none" stroke="#3B2A1A" stroke-opacity="0.45" stroke-width="2.5" stroke-linecap="round" />
+      <path d="M56,42.3 L63.7,50 L56,57.7 L48.3,50 Z" fill="#FBF5EA" />
+      <path d="M56,44.5 L61.5,50 L56,55.5 L50.5,50 Z" fill="#D2553F" />
     </g>
   </svg>
   <span>Hisaab</span>
