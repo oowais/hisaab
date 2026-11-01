@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["crates/core", "src-tauri", "plugins/tauri-plugin-reminders"]
+members = ["crates/core", "crates/sync", "src-tauri", "plugins/tauri-plugin-reminders"]
 
-# Small release builds.
+# Small release builds: sync (iroh) roughly doubled the app.
 [profile.release]
 strip = true
 lto = true
