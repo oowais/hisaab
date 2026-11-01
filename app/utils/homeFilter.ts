@@ -1,9 +1,13 @@
-// Home's filter: a kind and any categories (none = all of them).
+// Home's filter: a kind, any categories (none = all of them), and whether
+// ended and archived payments show at the bottom.
 import type { Kind, SubscriptionView } from '~/composables/api'
 
-export type HomeFilter = { kind: Kind | 'all'; categories: string[] }
+export type HomeFilter = { kind: Kind | 'all'; categories: string[]; hideOver?: boolean }
 /** The "No category" entry's key. */
 export const NO_CATEGORY = 'none'
+
+export const isFiltered = (f: HomeFilter) => f.kind !== 'all' || f.categories.length > 0 || !!f.hideOver
+export const NO_FILTER: HomeFilter = { kind: 'all', categories: [], hideOver: false }
 
 export function matches(f: HomeFilter, s: SubscriptionView, known: Map<string, string>): boolean {
   if (f.kind !== 'all' && s.kind !== f.kind) return false

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// Home's filter: subscriptions or bills (when there are both), and any
-// categories, each with what its running payments cost a year. Applies as
-// you tap; "Show all" clears it.
+// Home's filter: subscriptions or bills (when there are both), any
+// categories, each with what its running payments cost a year, and ended
+// and archived payments on or off. Applies as you tap; "Show all" clears it.
 import { Check, X } from 'lucide-vue-next'
 import type { SubscriptionView } from '~/composables/api'
-import { NO_CATEGORY as NONE, type HomeFilter } from '~/utils/homeFilter'
+import { isFiltered, NO_CATEGORY as NONE, NO_FILTER, type HomeFilter } from '~/utils/homeFilter'
 
 const props = defineProps<{ subs: SubscriptionView[]; names: Map<string, string>; main: string }>()
 const filter = defineModel<HomeFilter>({ required: true })
@@ -37,7 +37,7 @@ function toggle(key: string) {
   const on = filter.value.categories.includes(key)
   filter.value = { ...filter.value, categories: on ? filter.value.categories.filter((c) => c !== key) : [...filter.value.categories, key] }
 }
-const active = computed(() => filter.value.kind !== 'all' || filter.value.categories.length > 0)
+const active = computed(() => isFiltered(filter.value))
 </script>
 
 <template>
@@ -79,7 +79,17 @@ const active = computed(() => filter.value.kind !== 'all' || filter.value.catego
       </template>
       <p v-else class="muted small">Give your payments categories to filter by them.</p>
 
-      <button v-if="active" type="button" class="btn" @click="filter = { kind: 'all', categories: [] }">Show all</button>
+      <button
+        type="button"
+        class="chip over"
+        :class="filter.hideOver ? 'off' : 'chosen'"
+        :aria-pressed="!filter.hideOver"
+        @click="filter = { ...filter, hideOver: !filter.hideOver }"
+      >
+        <Check v-if="!filter.hideOver" :size="14" /> Ended and archived
+      </button>
+
+      <button v-if="active" type="button" class="btn" @click="filter = { ...NO_FILTER }">Show all</button>
     </div>
   </div>
 </template>
@@ -129,6 +139,9 @@ const active = computed(() => filter.value.kind !== 'all' || filter.value.catego
   width: 100%;
   min-height: 48px;
   text-align: left;
+}
+.over {
+  align-self: flex-start;
 }
 .flex {
   flex: 1;

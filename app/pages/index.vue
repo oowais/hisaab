@@ -20,7 +20,7 @@ import {
   TriangleAlert,
 } from 'lucide-vue-next'
 import type { SubscriptionView, UpcomingCharge } from '~/composables/api'
-import { matches, NO_CATEGORY, type HomeFilter } from '~/utils/homeFilter'
+import { isFiltered, matches, NO_CATEGORY, NO_FILTER, type HomeFilter } from '~/utils/homeFilter'
 import type { Shared } from '~/utils/share'
 
 const router = useRouter()
@@ -64,13 +64,13 @@ watch(filter, (v) => {
   } catch {}
 })
 const filtering = ref(false)
-const filtered = computed(() => filter.value.kind !== 'all' || filter.value.categories.length > 0)
+const filtered = computed(() => isFiltered(filter.value))
 /** "Bills · Streaming, Music" for the active filter. */
 const filterText = computed(() => {
   const f = filter.value
   const kind = f.kind === 'all' ? '' : f.kind === 'bill' ? 'Bills' : 'Subscriptions'
   const cats = f.categories.map((c) => (c === NO_CATEGORY ? 'No category' : (categoryNames.value.get(c) ?? '…'))).join(', ')
-  return [kind, cats].filter(Boolean).join(' · ')
+  return [kind, cats, f.hideOver ? 'Without ended' : ''].filter(Boolean).join(' · ')
 })
 const subs = computed(() => data.value?.subscriptions ?? [])
 const shown = (s: SubscriptionView) => matches(filter.value, s, categoryNames.value)
@@ -179,7 +179,9 @@ const loadArchived = () =>
     .catch(() => {})
 watch(dataVersion, loadArchived)
 onMounted(loadArchived)
-const over = computed(() => [...subs.value.filter((s) => s.status === 'ended'), ...archived.value].filter(shown))
+const over = computed(() =>
+  filter.value.hideOver ? [] : [...subs.value.filter((s) => s.status === 'ended'), ...archived.value].filter(shown),
+)
 /** "Ended 3 Mar 2025", "Archived". */
 const overText = (s: SubscriptionView) =>
   s.archivedAt ? 'Archived' : s.current?.endDate ? `Ended ${shortDay(s.current.endDate, today.value)}` : 'Ended'
@@ -256,7 +258,7 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 
         <div v-if="filtered" class="chips filters">
           <button class="chip chosen" @click="filtering = true">{{ filterText }}</button>
-          <button class="icon-btn" aria-label="Show all" @click="filter = { kind: 'all', categories: [] }"><X :size="18" /></button>
+          <button class="icon-btn" aria-label="Show all" @click="filter = { ...NO_FILTER }"><X :size="18" /></button>
         </div>
 
         <section v-if="trials.length">
