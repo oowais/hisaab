@@ -440,7 +440,7 @@ async function save() {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 2px;
+  padding: 6px 14px;
 }
 .more {
   display: flex;

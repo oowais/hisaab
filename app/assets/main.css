@@ -353,6 +353,16 @@ svg.lucide {
 
 /* The thing that asks to be pressed: a solid pane of ink. */
 .btn.primary,
+/* Hisaab: a chosen chip is a toggle that's on; the glass state alone was
+   too subtle to see, so it wears the ink. */
+.chip.chosen {
+  background-color: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  color: var(--on-accent);
+  box-shadow:
+    inset 0 1px 0 var(--primary-rim),
+    inset 0 0 0 1px var(--primary-inner),
+    0 1px 2px var(--glass-contact);
+}
 .ink {
   background-color: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
   color: var(--on-accent);
