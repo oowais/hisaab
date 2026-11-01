@@ -56,6 +56,12 @@ impl Store {
         Ok(d.and_then(|d| NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok()))
     }
 
+    /// Day of the oldest cached rates.
+    pub fn earliest_rates_date(&self) -> Result<Option<NaiveDate>> {
+        let d: Option<String> = self.conn.query_row("SELECT MIN(date) FROM fx_rate", [], |r| r.get(0))?;
+        Ok(d.and_then(|d| NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok()))
+    }
+
     /// Whether to show "rates from <date>": none cached, or older than 3 days.
     pub fn rates_stale(&self, today: NaiveDate) -> Result<bool> {
         Ok(self.latest_rates_date()?.is_none_or(|d| (today - d).num_days() > STALE_DAYS))

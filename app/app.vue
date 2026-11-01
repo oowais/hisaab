@@ -4,7 +4,9 @@ const route = useRoute()
 const releaseSplash = holdSplash()
 const whatsNew = useWhatsNew()
 
-onMounted(() => {
+onMounted(async () => {
+  // Desktop: our own right-click menus only (see useContextMenu).
+  document.addEventListener('contextmenu', suppressDefaultMenu)
   useUpdate()
     .check()
     .catch(() => {})
@@ -15,7 +17,11 @@ onMounted(() => {
       .catch(() => {}),
   )
   handleBackButton().catch(() => {})
+  // The first screen's data, then the splash goes; rates catch up after.
+  await useOverview().ready()
   releaseSplash()
+  void refreshRates()
+  window.addEventListener('online', () => void refreshRates())
   // After an update, on the home screen (not over a notification's screen).
   if (route.path === '/') whatsNew.checkAfterUpdate()
 })
@@ -24,6 +30,7 @@ onMounted(() => {
 <template>
   <NuxtPage />
   <TabBar />
+  <ContextMenu />
   <WhatsNewSheet
     v-if="whatsNew.shown.value"
     :releases="whatsNew.shown.value.releases"

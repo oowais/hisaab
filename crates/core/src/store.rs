@@ -3,7 +3,21 @@
 
 use rusqlite::{params, Connection, OptionalExtension};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{schema, Error, Result};
+
+/// App-wide settings (synced). Theme and the like are per device (frontend).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Settings {
+    /// Totals and converted amounts are shown in it.
+    pub main_currency: String,
+    /// Remind this many days before a charge, unless a subscription says otherwise.
+    pub default_remind_days: u32,
+    /// Quick add's currency when no template says otherwise.
+    pub last_currency: Option<String>,
+}
 
 pub struct Store {
     pub(crate) conn: Connection,
@@ -79,5 +93,33 @@ impl Store {
             )?;
             Ok(())
         })
+    }
+
+    pub fn settings(&self) -> Result<Settings> {
+        Ok(Settings {
+            main_currency: self.main_currency()?,
+            default_remind_days: self
+                .setting("default_remind_days")?
+                .and_then(|v| v.as_u64())
+                .and_then(|n| u32::try_from(n).ok())
+                .unwrap_or(3),
+            last_currency: self
+                .setting("last_currency")?
+                .and_then(|v| v.as_str().map(String::from))
+                .filter(|c| crate::currency::is_currency_code(c)),
+        })
+    }
+
+    /// Change one setting, validated (`main_currency`, `default_remind_days`, `last_currency`).
+    pub fn update_setting(&mut self, key: &str, value: &serde_json::Value) -> Result<()> {
+        let ok = match key {
+            "main_currency" | "last_currency" => value.as_str().is_some_and(crate::currency::is_currency_code),
+            "default_remind_days" => value.as_u64().is_some_and(|n| n <= 60),
+            _ => return Err(Error::Invalid(format!("unknown setting {key}"))),
+        };
+        if !ok {
+            return Err(Error::Invalid(format!("bad value for {key}")));
+        }
+        self.set_setting(key, value)
     }
 }

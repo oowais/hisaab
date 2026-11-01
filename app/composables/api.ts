@@ -1,3 +1,143 @@
-// Typed wrappers around the Tauri commands in src-tauri/src/lib.rs.
+// Typed wrappers around the Tauri commands in src-tauri/src/lib.rs. Dates
+// are local calendar days, 'YYYY-MM-DD'; money is integer minor units.
+import { invoke } from '@tauri-apps/api/core'
 
 export const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+
+export type Kind = 'subscription' | 'bill'
+export type Unit = 'day' | 'week' | 'month' | 'year'
+export type PeriodStatus = 'trial' | 'active' | 'paused'
+export type Status = 'trial' | 'active' | 'paused' | 'ended'
+export type OverrideKind = 'skipped' | 'moved' | 'amount_changed' | 'settled'
+export type Action = 'price' | 'pause' | 'resume' | 'cancel' | 'restart' | 'convert'
+
+export type Terms = {
+  amountMinor: number
+  currency: string
+  everyN: number
+  unit: Unit
+  planLabel: string | null
+  amountKind: 'fixed' | 'estimated'
+}
+
+export type Period = Terms & {
+  id: string
+  subscriptionId: string
+  status: PeriodStatus
+  anchorDate: string
+  startDate: string
+  endDate: string | null
+}
+
+export type SubscriptionFields = {
+  kind: Kind | null
+  name: string
+  templateKey: string | null
+  icon: string | null
+  color: string | null
+  categoryId: string | null
+  paymentMethodId: string | null
+  url: string | null
+  notes: string
+  remindDaysBefore: number | null
+}
+
+export type Subscription = SubscriptionFields & { id: string; kind: Kind; archivedAt: number | null }
+
+export type Charge = {
+  subscriptionId: string
+  periodId: string
+  dueDate: string
+  scheduledDate: string
+  amountMinor: number
+  currency: string
+  settledAmountMinor: number | null
+  settledCurrency: string | null
+  estimated: boolean
+  status: 'upcoming' | 'paid'
+  isOverride: boolean
+}
+
+export type SubscriptionView = Subscription & {
+  status: Status
+  current: Period | null
+  nextCharge: Charge | null
+  nextInMain: number | null
+  yearlyInMain: number | null
+}
+
+export type UpcomingCharge = Charge & { inMain: number | null }
+
+export type Overview = {
+  mainCurrency: string
+  subscriptions: SubscriptionView[]
+  upcoming: UpcomingCharge[]
+  yearlyTotal: number
+  excludedCurrencies: string[]
+  ratesDate: string | null
+  ratesStale: boolean
+}
+
+export type HistoryCharge = Charge & { inMain: number | null; overrideId: string | null }
+
+export type Detail = SubscriptionView & {
+  periods: Period[]
+  history: HistoryCharge[]
+  totalSpent: number
+  excludedCurrencies: string[]
+  historyFrom: string | null
+}
+
+export type Category = { id: string; name: string; color: string; sort: number }
+export type PaymentMethod = { id: string; name: string }
+export type Settings = { mainCurrency: string; defaultRemindDays: number; lastCurrency: string | null }
+
+export type NewSubscription = {
+  fields: SubscriptionFields
+  terms: Terms
+  startDate: string
+  anchorDate: string | null
+  trialEnd: string | null
+}
+
+export type NewOverride = {
+  periodId: string
+  dueDate: string
+  kind: OverrideKind
+  newDueDate?: string | null
+  actualAmountMinor?: number | null
+  actualCurrency?: string | null
+  settledAmountMinor?: number | null
+  settledCurrency?: string | null
+}
+
+export const api = {
+  overview: (today: string) => invoke<Overview>('overview', { today }),
+  detail: (id: string, today: string) => invoke<Detail>('detail', { id, today }),
+  defaults: (id: string, today: string) => invoke<{ nextCharge: string | null; cycleEnd: string }>('defaults', { id, today }),
+  categories: () => invoke<Category[]>('categories'),
+  paymentMethods: () => invoke<PaymentMethod[]>('payment_methods'),
+  settings: () => invoke<Settings>('settings'),
+  addSubscription: (n: NewSubscription) => invoke<string>('add_subscription', { new: n }),
+  updateSubscription: (id: string, fields: SubscriptionFields) => invoke<void>('update_subscription', { id, fields }),
+  changeTerms: (id: string, from: string, terms: Terms) => invoke<void>('change_terms', { id, from, terms }),
+  pause: (id: string, from: string, resumeOn: string | null) => invoke<void>('pause', { id, from, resumeOn }),
+  resume: (id: string, on: string, anchor: string | null = null) => invoke<void>('resume', { id, on, anchor }),
+  cancel: (id: string, endsOn: string) => invoke<void>('cancel', { id, endsOn }),
+  restart: (id: string, on: string, terms: Terms | null = null) => invoke<void>('restart', { id, on, terms }),
+  convertTrial: (id: string, on: string, terms: Terms | null = null) => invoke<void>('convert_trial', { id, on, terms }),
+  setArchived: (id: string, archived: boolean) => invoke<void>('set_archived', { id, archived }),
+  deleteSubscription: (id: string) => invoke<void>('delete_subscription', { id }),
+  restoreSubscription: (id: string) => invoke<void>('restore_subscription', { id }),
+  setOverride: (o: NewOverride) => invoke<unknown>('set_override', { o }),
+  deleteOverride: (id: string) => invoke<void>('delete_override', { id }),
+  addCategory: (name: string, color = '') => invoke<Category>('add_category', { name, color }),
+  addPaymentMethod: (name: string) => invoke<PaymentMethod>('add_payment_method', { name }),
+  updateSetting: (key: string, value: unknown) => invoke<void>('update_setting', { key, value }),
+  refreshRates: (today: string) => invoke<boolean>('refresh_rates', { today }),
+  ensureRates: (from: string, today: string) => invoke<boolean>('ensure_rates', { from, today }),
+}
+
+/** Bumped after every write: screens reload their data when it changes. */
+export const dataVersion = ref(0)
+export const changed = () => dataVersion.value++

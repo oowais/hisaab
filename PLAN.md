@@ -204,8 +204,8 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 | --- | ------------------------------ | --------------------------------------------------------------------------------------------- |
 | 1   | Scaffold + CI + in-app updates | Done (Nov 1, 2026): released 0.1.1, Android update verified; Windows and Linux still to check |
 | 2   | Domain core                    | Done (Nov 1, 2026): `crates/core`, 34 tests                                                   |
-| 3   | MVP UI                         | Next                                                                                          |
-| 4   | Timeline                       | —                                                                                             |
+| 3   | MVP UI                         | Done (Nov 1, 2026)                                                                            |
+| 4   | Timeline                       | Next                                                                                          |
 | 5   | Notifications                  | —                                                                                             |
 | 6   | Sync + backup                  | —                                                                                             |
 | 7   | v1.1                           | —                                                                                             |
@@ -238,7 +238,17 @@ Decisions made in milestone 2:
 - An open-ended pause drops later scheduled changes (e.g. a future price rise); a pause with a resume date keeps them.
 - Shown status: the period covering today; else the next scheduled one; else Ended.
 
-**Next:** milestone 3 — Tauri commands over the core, FX fetch (Frankfurter via `ureq`) + cache, Upcoming, Quick add + templates, Detail with status actions, Settings basics (main currency, default reminder days).
+Milestone 3 checklist:
+
+- [x] Tauri commands over the core (`src-tauri/src/lib.rs`), overview layer in core (`overview.rs`: status, next charge, yearly cost, upcoming, history, total spent)
+- [x] FX: latest rates once a day when online, historic ranges when a history needs them (`src-tauri/src/fx.rs`, `ureq`)
+- [x] Upcoming: total per month / year / day (tap), groups, filter chips (only with both kinds), swipe left to move a charge, long-press menu, paused collapsed, ended hidden
+- [x] Quick add: template search (54 templates, Simple Icons + Lucide fallbacks for brands Simple Icons dropped), amount + currency, tappable "monthly, starting today", More
+- [x] Detail: status card, actions by status (sheets with sensible default dates), mini timeline strip, periods, total spent, charge history (undo an override), edit, archive, delete with undo
+- [x] Settings: main currency, default reminder days
+- [ ] Not yet: desktop sidebar + list/detail split; managing categories, payment methods and templates in Settings; editing a past charge's amount (v1.1 "charge overrides UI")
+
+**Next:** milestone 4 — Timeline view (hand-built SVG): one lane per subscription, zoom, status styles, price-change diamonds, today line, sort, tap → Detail.
 
 ### Backlog (Befikr features not copied yet)
 

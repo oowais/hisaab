@@ -2,6 +2,14 @@
 
 One short note per milestone. Per-release notes come from the commits (`.github/scripts/release-notes.sh`).
 
+## Milestone 3 — MVP UI (Nov 1, 2026)
+
+- Upcoming: what's charged next, grouped by when, with the total per month, year or day in your main currency.
+- Quick add with 54 templates (brand icons offline), any currency, any interval, free trials.
+- Detail: change price, pause, resume, cancel, restart, convert a trial; price history and total spent.
+- Exchange rates from the ECB (Frankfurter), cached; past charges use the rate of their day.
+- Settings: main currency, default reminder days.
+
 ## Milestone 2 — Domain core (Nov 1, 2026)
 
 - Schema for categories, payment methods, subscriptions, periods, charge overrides and the FX cache.

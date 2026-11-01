@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { Download, WifiOff } from 'lucide-vue-next'
+import { Bell, Coins, Download, WifiOff } from 'lucide-vue-next'
+import type { Settings } from '~/composables/api'
 
 const version = ref('')
 onMounted(async () => (version.value = await getVersion().catch(() => '')))
@@ -35,10 +36,73 @@ async function installUpdate() {
   }
 }
 const { theme, setTheme } = useTheme()
+
+// ---- Money and reminders (synced settings)
+const settings = ref<Settings | null>(null)
+const error = ref('')
+onMounted(async () => (settings.value = await api.settings().catch(() => null)))
+const pickingCurrency = ref(false)
+const currencyName = computed(() => {
+  const c = settings.value?.mainCurrency
+  return c ? (new Intl.DisplayNames(undefined, { type: 'currency' }).of(c) ?? c) : ''
+})
+async function set(key: 'main_currency' | 'default_remind_days', value: string | number) {
+  try {
+    await api.updateSetting(key, value)
+    settings.value = await api.settings()
+    error.value = ''
+    changed()
+  } catch (e) {
+    error.value = friendlyError(e, 'change the setting')
+  }
+}
+const REMIND = [0, 1, 2, 3, 5, 7, 14]
 </script>
 
 <template>
   <Screen title="Settings">
+    <p v-if="error" class="error">{{ error }}</p>
+    <template v-if="settings">
+      <h2 class="section-title">Money</h2>
+      <div class="pane rows">
+        <button class="item" @click="pickingCurrency = true">
+          <Coins :size="20" class="muted" />
+          <span class="flex stack">
+            <span>Main currency</span>
+            <span class="muted small">Totals and converted amounts</span>
+          </span>
+          <span class="muted">{{ settings.mainCurrency }} · {{ currencyName }}</span>
+        </button>
+      </div>
+
+      <h2 class="section-title">Reminders</h2>
+      <div class="pane rows">
+        <div class="item remind">
+          <Bell :size="20" class="muted" />
+          <span class="flex">Remind before a charge</span>
+        </div>
+        <div class="chips remind-chips" role="radiogroup" aria-label="Days before">
+          <button
+            v-for="n in REMIND"
+            :key="n"
+            class="chip"
+            role="radio"
+            :aria-checked="settings.defaultRemindDays === n"
+            :class="{ chosen: settings.defaultRemindDays === n }"
+            @click="set('default_remind_days', n)"
+          >
+            {{ n === 0 ? 'Same day' : n === 1 ? '1 day' : `${n} days` }}
+          </button>
+        </div>
+      </div>
+      <CurrencySheet
+        v-if="pickingCurrency"
+        :model-value="settings.mainCurrency"
+        @update:model-value="set('main_currency', $event)"
+        @close="pickingCurrency = false"
+      />
+    </template>
+
     <h2 class="section-title">Theme</h2>
     <div class="seg" role="radiogroup" aria-label="Theme">
       <button
@@ -216,5 +280,15 @@ const { theme, setTheme } = useTheme()
   flex-direction: column;
   gap: 2px;
   text-align: left;
+}
+.remind {
+  min-height: 48px;
+}
+.remind-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 0 14px;
+  border-top: 0;
 }
 </style>

@@ -30,7 +30,6 @@ use crate::{Error, Result};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewSubscription {
-    #[serde(flatten)]
     pub fields: SubscriptionFields,
     pub terms: Terms,
     pub start_date: NaiveDate,
