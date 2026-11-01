@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { addPluginListener } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+
 const route = useRoute()
+const router = useRouter()
 // The splash stays until we know which screen opens (see useSplash).
 const releaseSplash = holdSplash()
 const whatsNew = useWhatsNew()
@@ -17,6 +21,15 @@ onMounted(async () => {
       .catch(() => {}),
   )
   handleBackButton().catch(() => {})
+  // A reminder opens the app on its subscription (or its snooze sheet):
+  // Android notification (cold start or while open), desktop notification.
+  const launch = await native.takeLaunchRoute().then(
+    (r) => r.route,
+    () => null,
+  )
+  if (launch) await router.push(launch)
+  addPluginListener('reminders', 'launchRoute', (e: { route: string }) => router.push(e.route)).catch(() => {})
+  listen<string>('open-route', (e) => router.push(e.payload)).catch(() => {})
   // The first screen's data, then the splash goes; rates catch up after.
   await useOverview().ready()
   releaseSplash()

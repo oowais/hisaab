@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { Bell, Coins, Download, WifiOff } from 'lucide-vue-next'
-import type { Settings } from '~/composables/api'
+import { AlarmClock, BatteryFull, Bell, BellRing, Check, Clock, Coins, Download, Power, WifiOff } from 'lucide-vue-next'
+import type { DesktopPrefs, ReminderStatus, Settings } from '~/composables/api'
 
 const version = ref('')
 onMounted(async () => (version.value = await getVersion().catch(() => '')))
@@ -46,7 +46,7 @@ const currencyName = computed(() => {
   const c = settings.value?.mainCurrency
   return c ? (new Intl.DisplayNames(undefined, { type: 'currency' }).of(c) ?? c) : ''
 })
-async function set(key: 'main_currency' | 'default_remind_days', value: string | number) {
+async function set(key: 'main_currency' | 'default_remind_days' | 'reminder_time', value: string | number) {
   try {
     await api.updateSetting(key, value)
     settings.value = await api.settings()
@@ -57,6 +57,33 @@ async function set(key: 'main_currency' | 'default_remind_days', value: string |
   }
 }
 const REMIND = [0, 1, 2, 3, 5, 7, 14]
+const pickingTime = ref(false)
+
+// ---- Android: what reminders need. Re-read when back from the system's settings.
+const status = ref<ReminderStatus | null>(null)
+const loadStatus = async () => (status.value = await native.status().catch(() => null))
+const onVisible = () => document.visibilityState === 'visible' && loadStatus()
+onMounted(() => {
+  loadStatus()
+  document.addEventListener('visibilitychange', onVisible)
+})
+onUnmounted(() => document.removeEventListener('visibilitychange', onVisible))
+async function allow(f: () => Promise<void>) {
+  await f().catch(() => {})
+  setTimeout(loadStatus, 800)
+}
+
+// ---- Desktop: this computer's startup
+const desktop = ref<DesktopPrefs | null>(null)
+onMounted(async () => (desktop.value = await api.desktopPrefs().catch(() => null)))
+async function setDesktop(f: () => Promise<void>) {
+  try {
+    await f()
+    desktop.value = await api.desktopPrefs()
+  } catch (e) {
+    error.value = friendlyError(e, 'change the setting')
+  }
+}
 </script>
 
 <template>
@@ -94,7 +121,70 @@ const REMIND = [0, 1, 2, 3, 5, 7, 14]
             {{ n === 0 ? 'Same day' : n === 1 ? '1 day' : `${n} days` }}
           </button>
         </div>
+        <button class="item" @click="pickingTime = true">
+          <Clock :size="20" class="muted" />
+          <span class="flex">At</span>
+          <span class="muted">{{ settings.reminderTime }}</span>
+        </button>
+        <template v-if="status">
+          <div
+            v-for="p in [
+              { icon: BellRing, label: 'Notifications', ok: status.notifications, allow: native.requestNotifications },
+              { icon: AlarmClock, label: 'Exact alarms', ok: status.exactAlarms, allow: native.openExactAlarmSettings },
+              { icon: BatteryFull, label: 'Unrestricted battery', ok: status.batteryUnrestricted, allow: native.openBatterySettings },
+            ]"
+            :key="p.label"
+            class="item"
+          >
+            <component :is="p.icon" :size="20" class="muted" />
+            <span class="flex">{{ p.label }}</span>
+            <span v-if="p.ok" class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
+            <button v-else class="btn" @click="allow(p.allow)">Allow</button>
+          </div>
+        </template>
       </div>
+      <TimeSheet
+        v-if="pickingTime"
+        :model-value="settings.reminderTime"
+        title="Remind at"
+        @update:model-value="set('reminder_time', $event)"
+        @close="pickingTime = false"
+      />
+
+      <template v-if="desktop">
+        <h2 class="section-title">Startup</h2>
+        <div class="pane rows">
+          <div class="item">
+            <Power :size="20" class="muted" />
+            <span class="flex stack">
+              <span>Start at login</span>
+              <span class="muted small">So reminders show with the window closed</span>
+            </span>
+            <button
+              class="chip"
+              :class="{ chosen: desktop.autostart }"
+              :aria-pressed="desktop.autostart"
+              @click="setDesktop(() => api.setAutostart(!desktop!.autostart))"
+            >
+              {{ desktop.autostart ? 'On' : 'Off' }}
+            </button>
+          </div>
+          <div v-if="desktop.autostart" class="item">
+            <span class="flex stack">
+              <span>Start hidden</span>
+              <span class="muted small">In the tray, no window</span>
+            </span>
+            <button
+              class="chip"
+              :class="{ chosen: desktop.startHidden }"
+              :aria-pressed="desktop.startHidden"
+              @click="setDesktop(() => api.setStartHidden(!desktop!.startHidden))"
+            >
+              {{ desktop.startHidden ? 'On' : 'Off' }}
+            </button>
+          </div>
+        </div>
+      </template>
       <CurrencySheet
         v-if="pickingCurrency"
         :model-value="settings.mainCurrency"

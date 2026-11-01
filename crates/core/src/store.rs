@@ -17,6 +17,8 @@ pub struct Settings {
     pub default_remind_days: u32,
     /// Quick add's currency when no template says otherwise.
     pub last_currency: Option<String>,
+    /// Reminders show at this local time, "HH:MM".
+    pub reminder_time: String,
 }
 
 pub struct Store {
@@ -103,6 +105,7 @@ impl Store {
                 .and_then(|v| v.as_u64())
                 .and_then(|n| u32::try_from(n).ok())
                 .unwrap_or(3),
+            reminder_time: self.reminder_time()?,
             last_currency: self
                 .setting("last_currency")?
                 .and_then(|v| v.as_str().map(String::from))
@@ -110,10 +113,21 @@ impl Store {
         })
     }
 
-    /// Change one setting, validated (`main_currency`, `default_remind_days`, `last_currency`).
+    /// "HH:MM", default 09:00.
+    pub fn reminder_time(&self) -> Result<String> {
+        Ok(self
+            .setting("reminder_time")?
+            .and_then(|v| v.as_str().map(String::from))
+            .filter(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").is_ok())
+            .unwrap_or_else(|| "09:00".into()))
+    }
+
+    /// Change one setting, validated (`main_currency`, `default_remind_days`,
+    /// `last_currency`, `reminder_time`).
     pub fn update_setting(&mut self, key: &str, value: &serde_json::Value) -> Result<()> {
         let ok = match key {
             "main_currency" | "last_currency" => value.as_str().is_some_and(crate::currency::is_currency_code),
+            "reminder_time" => value.as_str().is_some_and(|t| chrono::NaiveTime::parse_from_str(t, "%H:%M").is_ok()),
             "default_remind_days" => value.as_u64().is_some_and(|n| n <= 60),
             _ => return Err(Error::Invalid(format!("unknown setting {key}"))),
         };

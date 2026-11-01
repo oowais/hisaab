@@ -10,6 +10,7 @@ pub mod invariants;
 mod model;
 pub mod occurrence;
 mod overview;
+pub mod reminders;
 mod schema;
 mod store;
 mod subscriptions;
@@ -17,6 +18,7 @@ mod fx;
 
 pub use model::*;
 pub use overview::{per_year, Detail, HistoryCharge, Overview, SubscriptionView, TimelineLane, UpcomingCharge};
+pub use reminders::{snooze_picks, Fired, Reminder, SnoozePick};
 pub use store::{Settings, Store};
 pub use subscriptions::{NewOverride, NewSubscription};
 

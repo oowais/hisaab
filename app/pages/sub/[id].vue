@@ -52,6 +52,18 @@ const ACTIONS: Record<string, { action: Action | 'archive'; label: string }[]> =
   ],
 }
 const acting = ref<Action | null>(null)
+// Opened from a reminder's Snooze (?snooze=1): the snooze sheet.
+const snoozing = ref(false)
+watch(
+  () => route.query.snooze,
+  (v) => {
+    if (!v) return
+    snoozing.value = true
+    const { snooze: _, ...query } = route.query
+    router.replace({ query })
+  },
+  { immediate: true },
+)
 // Opened from a Timeline bar (?period=): that period stands out.
 const focusPeriod = computed(() => (typeof route.query.period === 'string' ? route.query.period : null))
 const editing = ref(false)
@@ -254,6 +266,13 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
     </template>
 
     <ActionSheet v-if="acting && sub" :action="acting" :sub="sub" @close="acting = null" @done="done" />
+    <SnoozeSheet
+      v-if="snoozing && sub"
+      :id="sub.id"
+      :name="sub.name"
+      @close="snoozing = false"
+      @done="(m) => ((snoozing = false), done(m))"
+    />
     <EditSheet v-if="editing && sub" :sub="sub" @close="editing = false" @done="editing = false" />
   </Screen>
 </template>

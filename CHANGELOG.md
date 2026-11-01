@@ -2,6 +2,13 @@
 
 One short note per milestone. Per-release notes come from the commits (`.github/scripts/release-notes.sh`).
 
+## Milestone 5 — Notifications (Nov 1, 2026)
+
+- Reminders before each charge ("Netflix · €4.99 in 3 days"), at a time you choose; per payment or a default number of days.
+- A heads-up 2 days before a free trial ends.
+- Snooze from the notification (quick picks, or any day); Open goes straight to the payment.
+- Desktop: runs in the tray with the window closed; start at login.
+
 ## Milestone 4 — Timeline (Nov 1, 2026)
 
 - Timeline: one lane per subscription over time, with trials, pauses and future changes.

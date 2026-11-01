@@ -1,1 +1,2 @@
-# Keep rules for classes looked up by name (JNI entry points, workers) go here.
+# JNI entry points are looked up by name from Rust symbols.
+-keep class com.hisaab.reminders.Native { *; }

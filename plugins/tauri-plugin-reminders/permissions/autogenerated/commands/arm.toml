@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-arm"
+description = "Enables the arm command without any pre-configured scope."
+commands.allow = ["arm"]
+
+[[permission]]
+identifier = "deny-arm"
+description = "Denies the arm command without any pre-configured scope."
+commands.deny = ["arm"]

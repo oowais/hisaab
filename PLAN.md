@@ -206,8 +206,8 @@ Each milestone: working build, tests green, short note in `CHANGELOG.md`.
 | 2   | Domain core                    | Done (Nov 1, 2026): `crates/core`, 34 tests                                                   |
 | 3   | MVP UI                         | Done (Nov 1, 2026)                                                                            |
 | 4   | Timeline                       | Done (Nov 1, 2026)                                                                            |
-| 5   | Notifications                  | Next                                                                                          |
-| 6   | Sync + backup                  | —                                                                                             |
+| 5   | Notifications                  | Done (Nov 1, 2026): needs a release to check on Android                                       |
+| 6   | Sync + backup                  | Next                                                                                          |
 | 7   | v1.1                           | —                                                                                             |
 
 Milestone 1 checklist:
@@ -257,7 +257,15 @@ Milestone 4 checklist:
 - [x] Price / plan change diamonds (tap: "Standard €13.99 → Basic €4.99"), sort by start / cost / category, show ended
 - [x] Tap a bar → Detail with that period highlighted
 
-**Next:** milestone 5 — notifications: copy Befikr's scheduler (Kotlin alarms on Android, in-process scheduler + tray on desktop); N days before a charge at the reminder time, trial ending 2 days before; Open · Snooze; reschedule on every change and on start.
+Milestone 5 checklist:
+
+- [x] Core reminders (`reminders.rs`): computed like charges; one alarm per subscription (its next reminder); N days before a charge at the reminder time, trial ending 2 days before (wins a tie with the first charge); `reminder_state` (this device, not synced) so nothing fires twice and nothing from the past fires on first sight; snooze; quick picks
+- [x] Android (Befikr's, adapted): exact alarms, notification with Open · Snooze, snooze overlay ("Pick a day" opens the app), boot / update / time-change restore, JNI bridge (`src-tauri/src/jni.rs`)
+- [x] Desktop: scheduler thread, notifications with Open · Snooze, tray (window close hides), start at login + start hidden
+- [x] Re-armed on start and after every change; reminder time setting; Android permission rows in Settings; in-app snooze sheet (`/sub/<id>?snooze=1`)
+- [ ] Check on a phone: Kotlin only compiles in CI (no local `javac`); exact alarm + notification + overlay on a real device; Windows toast actions
+
+**Next:** milestone 6 — sync + backup: Befikr's iroh P2P sync (pairing by QR, LWW per field, conflict view incl. overlapping periods), daily export to a folder (keep 7), manual export / import.
 
 ### Backlog (Befikr features not copied yet)
 

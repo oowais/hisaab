@@ -106,5 +106,18 @@ pub fn migrations() -> Migrations<'static> {
         );
         ",
         ),
+        // Reminder bookkeeping for this device (not synced): what already
+        // fired, and a snoozed reminder.
+        M::up(
+            "
+        CREATE TABLE reminder_state (
+          subscription_id TEXT PRIMARY KEY,
+          fired_through   INTEGER NOT NULL,     -- UTC ms; reminders at or before it are done
+          snooze_at       INTEGER,              -- UTC ms
+          snooze_title    TEXT,
+          snooze_text     TEXT
+        );
+        ",
+        ),
     ])
 }

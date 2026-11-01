@@ -92,7 +92,11 @@ export type Detail = SubscriptionView & {
 
 export type Category = { id: string; name: string; color: string; sort: number }
 export type PaymentMethod = { id: string; name: string }
-export type Settings = { mainCurrency: string; defaultRemindDays: number; lastCurrency: string | null }
+export type Settings = { mainCurrency: string; defaultRemindDays: number; lastCurrency: string | null; reminderTime: string }
+export type SnoozePick = { label: string; atMs: number }
+export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
+/** Android: what reminders need (desktop: none of this). */
+export type ReminderStatus = { notifications: boolean; exactAlarms: boolean; batteryUnrestricted: boolean }
 
 export type NewSubscription = {
   fields: SubscriptionFields
@@ -137,8 +141,23 @@ export const api = {
   addCategory: (name: string, color = '') => invoke<Category>('add_category', { name, color }),
   addPaymentMethod: (name: string) => invoke<PaymentMethod>('add_payment_method', { name }),
   updateSetting: (key: string, value: unknown) => invoke<void>('update_setting', { key, value }),
+  snoozePicks: () => invoke<SnoozePick[]>('snooze_picks'),
+  snooze: (id: string, untilMs: number) => invoke<void>('snooze', { id, untilMs }),
+  reminderAt: (day: string) => invoke<number>('reminder_at', { day }),
+  desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
+  setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),
+  setStartHidden: (on: boolean) => invoke<void>('set_start_hidden', { on }),
   refreshRates: (today: string) => invoke<boolean>('refresh_rates', { today }),
   ensureRates: (from: string, today: string) => invoke<boolean>('ensure_rates', { from, today }),
+}
+
+/** The Android plugin's own commands (they reject on desktop). */
+export const native = {
+  status: () => invoke<ReminderStatus>('plugin:reminders|status'),
+  requestNotifications: () => invoke<void>('plugin:reminders|request_notifications'),
+  openExactAlarmSettings: () => invoke<void>('plugin:reminders|open_exact_alarm_settings'),
+  openBatterySettings: () => invoke<void>('plugin:reminders|open_battery_settings'),
+  takeLaunchRoute: () => invoke<{ route: string | null }>('plugin:reminders|take_launch_route'),
 }
 
 /** Bumped after every write: screens reload their data when it changes. */

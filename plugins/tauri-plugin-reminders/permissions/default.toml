@@ -1,3 +1,14 @@
 [default]
 description = "Allows the app's native Android commands."
-permissions = ["allow-install-update", "allow-move-to-back", "allow-register-listener", "allow-remove-listener"]
+permissions = [
+  "allow-arm",
+  "allow-status",
+  "allow-request-notifications",
+  "allow-open-exact-alarm-settings",
+  "allow-open-battery-settings",
+  "allow-take-launch-route",
+  "allow-install-update",
+  "allow-move-to-back",
+  "allow-register-listener",
+  "allow-remove-listener",
+]

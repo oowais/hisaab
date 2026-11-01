@@ -1,11 +1,36 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- In-app update: download the newer APK from GitHub. -->
+    <!-- Reminders before charges. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Exchange rates (Frankfurter) and in-app update downloads. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- In-app update: install a newer Hisaab APK (system asks to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application>
+        <!-- Notification Snooze: a sheet over whatever is on screen, in its own
+             task so the app doesn't open behind it. -->
+        <activity
+            android:name="com.hisaab.reminders.SnoozeActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+        <receiver android:name="com.hisaab.reminders.AlarmReceiver" android:exported="false" />
         <receiver android:name="com.hisaab.reminders.UpdateReceiver" android:exported="false" />
+        <receiver android:name="com.hisaab.reminders.RestoreReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

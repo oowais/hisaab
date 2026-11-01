@@ -1,6 +1,7 @@
-//! Native Android side of Hisaab: in-app updates and the back button for
-//! now; charge reminders (exact alarms, notification actions) come in
-//! milestone 5. Rust owns the data; Kotlin calls back into Rust via JNI.
+//! Native Android side of Hisaab: reminder alarms and notifications (with a
+//! snooze overlay), permissions, in-app updates, the back button. Rust owns
+//! the data and decides what to remind; Kotlin calls back into Rust via JNI
+//! (src-tauri/src/jni.rs) when an alarm fires with no webview.
 
 use tauri::{
     plugin::{Builder, TauriPlugin},
@@ -8,9 +9,31 @@ use tauri::{
 };
 
 #[cfg(target_os = "android")]
-pub struct Reminders<R: Runtime>(#[allow(dead_code)] tauri::plugin::PluginHandle<R>);
+pub struct Reminders<R: Runtime>(tauri::plugin::PluginHandle<R>);
 #[cfg(not(target_os = "android"))]
 pub struct Reminders<R: Runtime>(std::marker::PhantomData<fn() -> R>);
+
+impl<R: Runtime> Reminders<R> {
+    /// Arm exactly `reminders` (core `Reminder`s, serialized); cancel the rest.
+    /// Desktop: nothing to do here (the app's own scheduler arms them).
+    pub fn arm(&self, db_path: &str, reminders: &serde_json::Value) -> Result<(), String> {
+        #[cfg(target_os = "android")]
+        {
+            self.0
+                .run_mobile_plugin::<serde_json::Value>(
+                    "arm",
+                    serde_json::json!({ "dbPath": db_path, "reminders": reminders.to_string() }),
+                )
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = (db_path, reminders);
+            Ok(())
+        }
+    }
+}
 
 pub trait RemindersExt<R: Runtime> {
     fn reminders(&self) -> &Reminders<R>;
