@@ -20,6 +20,8 @@ const currency = ref(c.settledCurrency ?? c.currency)
 const amountText = ref(
   c.estimated && !c.isOverride ? '' : (shownMinor / 10 ** minorDigits(currency.value)).toFixed(minorDigits(currency.value)),
 )
+// A variable bill's estimate, as a hint while its real figure is empty.
+const placeholder = (c.amountMinor / 10 ** minorDigits(c.currency)).toFixed(minorDigits(c.currency))
 const day = ref(c.dueDate)
 const pickingCurrency = ref(false)
 const pickingDay = ref(false)
@@ -84,7 +86,7 @@ async function backToUsual() {
 
       <span class="muted small">{{ past ? 'Amount taken' : c.estimated ? 'Amount (the bill’s real figure)' : 'Amount' }}</span>
       <div class="amount-row">
-        <input v-model="amountText" class="field amount" inputmode="decimal" placeholder="0.00" aria-label="Amount" />
+        <input v-model="amountText" class="field amount" inputmode="decimal" :placeholder="placeholder" aria-label="Amount" />
         <button type="button" class="field currency" aria-label="Currency" @click="pickingCurrency = true">{{ currency }}</button>
       </div>
       <p v-if="past && currency !== c.currency" class="muted small hint">

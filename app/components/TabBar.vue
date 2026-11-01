@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // Main screens. Phone: a bar at the bottom; wide windows: a rail on the left.
-// Stats joins as the third tab in v1.1. Hidden on pages that aren't tabs.
-import { CalendarClock, ChartGantt } from 'lucide-vue-next'
+// Hidden on pages that aren't tabs.
+import { CalendarClock, ChartColumn, ChartGantt } from 'lucide-vue-next'
 
 const TABS = [
   { to: '/', label: 'Upcoming', icon: CalendarClock },
   { to: '/timeline', label: 'Timeline', icon: ChartGantt },
+  { to: '/stats', label: 'Stats', icon: ChartColumn },
 ]
 const route = useRoute()
 const shown = computed(() => TABS.some((t) => t.to === route.path.replace(/(.)\/$/, '$1')))

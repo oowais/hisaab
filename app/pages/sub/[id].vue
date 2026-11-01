@@ -134,7 +134,11 @@ const STATUS = { trial: 'Trial', active: 'Active', paused: 'Paused', ended: 'End
 const money = (minor: number, cur: string) => formatMoney(minor, cur)
 const price = computed(() => {
   const p = sub.value?.current
-  return p ? `${p.amountKind === 'estimated' ? '~' : ''}${money(p.amountMinor, p.currency)} ${intervalText(p.everyN, p.unit)}` : ''
+  if (!p) return ''
+  // A variable bill: the estimate learned from its real amounts (the next charge's).
+  const next = sub.value?.nextCharge
+  const amount = p.amountKind === 'estimated' && next?.estimated && next.periodId === p.id ? next.amountMinor : p.amountMinor
+  return `${p.amountKind === 'estimated' ? '~' : ''}${money(amount, p.currency)} ${intervalText(p.everyN, p.unit)}`
 })
 const periods = computed(() =>
   [...(sub.value?.periods ?? [])].reverse().map((p) => ({

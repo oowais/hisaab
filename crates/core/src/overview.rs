@@ -112,7 +112,7 @@ impl Store {
             .unwrap_or_else(|| "EUR".into()))
     }
 
-    fn view(&self, s: &SubscriptionDetail, today: NaiveDate, main: &str) -> Result<SubscriptionView> {
+    pub(crate) fn view(&self, s: &SubscriptionDetail, today: NaiveDate, main: &str) -> Result<SubscriptionView> {
         let status = status_on(&s.periods, today);
         let current = s
             .periods

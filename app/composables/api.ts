@@ -149,6 +149,20 @@ export type Conflict = {
 }
 export type BackupStatus = { folder: string | null; lastAt: number | null; lastError: string | null }
 
+export type Slice = { key: string | null; amount: number }
+export type MonthSpend = { month: string; total: number; byCategory: Slice[]; forecast: boolean }
+export type Stats = {
+  mainCurrency: string
+  months: MonthSpend[]
+  yearly: number
+  byCategory: Slice[]
+  byMethod: Slice[]
+  byCurrency: Slice[]
+  saved: number
+  excludedCurrencies: string[]
+  from: string | null
+}
+
 export type NewSubscription = {
   fields: SubscriptionFields
   terms: Terms
@@ -172,6 +186,7 @@ export const api = {
   overview: (today: string) => invoke<Overview>('overview', { today }),
   timeline: (today: string) => invoke<TimelineLane[]>('timeline', { today }),
   archived: (today: string) => invoke<SubscriptionView[]>('archived', { today }),
+  stats: (today: string, months: number) => invoke<Stats>('stats', { today, months }),
   detail: (id: string, today: string) => invoke<Detail>('detail', { id, today }),
   defaults: (id: string, today: string) => invoke<{ nextCharge: string | null; cycleEnd: string }>('defaults', { id, today }),
   categories: () => invoke<Category[]>('categories'),

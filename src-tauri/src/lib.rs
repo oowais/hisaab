@@ -73,6 +73,12 @@ fn overview(db: State<Db>, today: NaiveDate) -> Res<Overview> {
     with(&db, |s| s.overview(today))
 }
 
+/// `months`: how far back the monthly history goes (0 = all).
+#[tauri::command]
+fn stats(db: State<Db>, today: NaiveDate, months: u32) -> Res<Stats> {
+    with(&db, |s| s.stats(today, months))
+}
+
 #[tauri::command]
 fn archived(db: State<Db>, today: NaiveDate) -> Res<Vec<SubscriptionView>> {
     with(&db, |s| s.archived(today))
@@ -476,6 +482,7 @@ pub fn run() {
             overview,
             timeline,
             archived,
+            stats,
             detail,
             defaults,
             categories,
