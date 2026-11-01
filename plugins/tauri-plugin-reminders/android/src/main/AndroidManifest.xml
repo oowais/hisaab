@@ -23,6 +23,7 @@
             android:noHistory="true" />
         <receiver android:name="com.hisaab.reminders.AlarmReceiver" android:exported="false" />
         <receiver android:name="com.hisaab.reminders.UpdateReceiver" android:exported="false" />
+        <receiver android:name="com.hisaab.reminders.BackupReceiver" android:exported="false" />
         <receiver android:name="com.hisaab.reminders.RestoreReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

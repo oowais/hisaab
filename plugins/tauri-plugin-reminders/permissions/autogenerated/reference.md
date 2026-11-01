@@ -12,6 +12,12 @@ Allows the app's native Android commands.
 - `allow-take-launch-route`
 - `allow-install-update`
 - `allow-move-to-back`
+- `allow-backup-status`
+- `allow-pick-backup-folder`
+- `allow-clear-backup-folder`
+- `allow-backup-now`
+- `allow-export-backup`
+- `allow-pick-import-file`
 - `allow-register-listener`
 - `allow-remove-listener`
 
@@ -46,6 +52,110 @@ Enables the arm command without any pre-configured scope.
 <td>
 
 Denies the arm command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-backup-now`
+
+</td>
+<td>
+
+Enables the backup_now command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-backup-now`
+
+</td>
+<td>
+
+Denies the backup_now command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-backup-status`
+
+</td>
+<td>
+
+Enables the backup_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-backup-status`
+
+</td>
+<td>
+
+Denies the backup_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-clear-backup-folder`
+
+</td>
+<td>
+
+Enables the clear_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-clear-backup-folder`
+
+</td>
+<td>
+
+Denies the clear_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-export-backup`
+
+</td>
+<td>
+
+Enables the export_backup command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-export-backup`
+
+</td>
+<td>
+
+Denies the export_backup command without any pre-configured scope.
 
 </td>
 </tr>
@@ -150,6 +260,58 @@ Enables the open_exact_alarm_settings command without any pre-configured scope.
 <td>
 
 Denies the open_exact_alarm_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-pick-backup-folder`
+
+</td>
+<td>
+
+Enables the pick_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-pick-backup-folder`
+
+</td>
+<td>
+
+Denies the pick_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-pick-import-file`
+
+</td>
+<td>
+
+Enables the pick_import_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-pick-import-file`
+
+</td>
+<td>
+
+Denies the pick_import_file command without any pre-configured scope.
 
 </td>
 </tr>

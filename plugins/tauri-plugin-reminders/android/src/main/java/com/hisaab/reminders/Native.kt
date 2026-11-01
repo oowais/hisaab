@@ -21,4 +21,10 @@ object Native {
 
     /** Snooze until [untilMs]. → `{"next": Reminder?}` */
     external fun snooze(dbPath: String, subscriptionId: String, untilMs: Long, tz: String): String
+
+    /** Consistent snapshot of the database to [outPath]. → `{}` */
+    external fun exportTo(dbPath: String, outPath: String): String
+
+    /** One background sync round. → `{"reminders"?: [Reminder], "skipped"?, "problem"?}` */
+    external fun syncOnce(dbPath: String, keyPath: String, tz: String): String
 }

@@ -1,8 +1,9 @@
 //! Desktop (Linux, Windows): reminders run in this process. A scheduler
 //! thread fires them as notifications, re-armed from the database on start
 //! and after every change; the tray keeps the app running with the window
-//! closed. Android uses the Kotlin plugin instead.
+//! closed; daily backups run here too. Android uses the Kotlin plugin instead.
 
+pub mod backup;
 mod notify;
 pub mod prefs;
 mod scheduler;
@@ -39,6 +40,7 @@ static TRAY: AtomicBool = AtomicBool::new(false);
 
 /// Tray, then the window: shown unless starting hidden (see `prefs`).
 pub fn setup(app: &AppHandle) {
+    backup::start_daily(app.clone());
     match tray::create(app) {
         Ok(()) => TRAY.store(true, Ordering::Relaxed),
         Err(e) => eprintln!("tray unavailable: {e}"),

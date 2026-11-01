@@ -9,6 +9,12 @@ permissions = [
   "allow-take-launch-route",
   "allow-install-update",
   "allow-move-to-back",
+  "allow-backup-status",
+  "allow-pick-backup-folder",
+  "allow-clear-backup-folder",
+  "allow-backup-now",
+  "allow-export-backup",
+  "allow-pick-import-file",
   "allow-register-listener",
   "allow-remove-listener",
 ]

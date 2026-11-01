@@ -3,6 +3,7 @@ mod desktop;
 mod fx;
 #[cfg(target_os = "android")]
 mod jni;
+mod sync;
 
 use std::sync::Mutex;
 
@@ -57,10 +58,11 @@ pub(crate) fn rearm(app: &AppHandle) {
     }
 }
 
-/// A write that can change reminders: then re-arm them.
+/// A write that can change reminders: then re-arm them, and sync it soon.
 fn write<T>(app: &AppHandle, f: impl FnOnce(&mut Store) -> hisaab_core::Result<T>) -> Res<T> {
     let out = with(&app.state::<Db>(), f)?;
     rearm(app);
+    sync::nudge(app);
     Ok(out)
 }
 
@@ -339,6 +341,100 @@ fn install_update(_app: AppHandle) -> Res<()> {
     Err(DESKTOP_ONLY.into())
 }
 
+/// Replace all data with a backup file (path from the native file picker).
+/// The current data is snapshotted to the cache first; reminders are re-armed
+/// and paired devices get everything again.
+#[tauri::command]
+fn import_backup(app: AppHandle, db: State<Db>, path: String) -> Res<()> {
+    {
+        let mut s = db.store.lock().map_err(err)?;
+        if let Ok(dir) = app.path().app_cache_dir() {
+            let _ = std::fs::create_dir_all(&dir);
+            let _ = s.export_to(&dir.join("hisaab-before-import.db").to_string_lossy());
+        }
+        s.import_from(&path).map_err(err)?;
+    }
+    let _ = std::fs::remove_file(&path);
+    rearm(&app);
+    sync::nudge(&app);
+    Ok(())
+}
+
+// ---- Backups on this computer (Android: the reminders plugin's commands).
+// Dialogs block, so these run off the main thread (async).
+
+#[cfg(desktop)]
+#[tauri::command]
+fn backup_status(app: AppHandle) -> desktop::backup::BackupStatus {
+    desktop::backup::status(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn pick_backup_folder(app: AppHandle) -> Res<desktop::backup::BackupStatus> {
+    desktop::backup::pick_folder(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn clear_backup_folder(app: AppHandle) -> Res<desktop::backup::BackupStatus> {
+    desktop::backup::clear_folder(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn backup_now(app: AppHandle) -> Res<desktop::backup::BackupStatus> {
+    desktop::backup::run_now(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn export_backup(app: AppHandle) -> Res<serde_json::Value> {
+    Ok(serde_json::json!({ "saved": desktop::backup::export(&app)? }))
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn pick_import_file(app: AppHandle) -> Res<serde_json::Value> {
+    Ok(serde_json::json!({ "path": desktop::backup::pick_import(&app)? }))
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn backup_status() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn pick_backup_folder() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn clear_backup_folder() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn backup_now() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn export_backup() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn pick_import_file() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Wayland app id / X11 class `com.owaisahmed.hisaab` (matches StartupWMClass in
@@ -352,6 +448,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .on_window_event(desktop::on_window_event);
     builder
         .plugin(tauri_plugin_reminders::init())
@@ -367,6 +464,7 @@ pub fn run() {
                 desktop::setup(app.handle());
             }
             rearm(app.handle());
+            sync::setup(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -402,6 +500,23 @@ pub fn run() {
             set_autostart,
             set_start_hidden,
             install_update,
+            import_backup,
+            backup_status,
+            pick_backup_folder,
+            clear_backup_folder,
+            backup_now,
+            export_backup,
+            pick_import_file,
+            sync::sync_status,
+            sync::set_sync_mode,
+            sync::set_device_name,
+            sync::start_pairing,
+            sync::stop_pairing,
+            sync::pair_with_link,
+            sync::unpair,
+            sync::sync_now,
+            sync::conflicts,
+            sync::resolve_conflict,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Hisaab");
