@@ -82,11 +82,6 @@ const day = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(undefine
   max-height: 85vh;
   overflow-y: auto;
   animation: float-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.sheet.dragging {
-  transition: none;
-  user-select: none;
 }
 .grab {
   display: flex;

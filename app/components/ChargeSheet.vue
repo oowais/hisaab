@@ -12,6 +12,7 @@ const props = defineProps<{ charge: Charge; name: string; overrideId?: string | 
 const emit = defineEmits<{ close: [] }>()
 const toast = useToast()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const today = todayIso()
 const past = computed(() => props.charge.status === 'paid')
@@ -75,7 +76,15 @@ async function backToUsual() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet popover" role="dialog" :aria-label="`Charge · ${name}`" @submit.prevent="saveAmount">
+    <form
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      :aria-label="`Charge · ${name}`"
+      @submit.prevent="saveAmount"
+    >
       <header class="head">
         <b>{{ name }} · {{ shortDay(c.scheduledDate, today) }}</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

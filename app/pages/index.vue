@@ -408,6 +408,18 @@ function menu(e: MouseEvent, c: UpcomingCharge) {
 </template>
 
 <style scoped>
+/* Stays at the top while the list scrolls under it: pulled up over the
+   page's top padding and the status bar so nothing shows above it. */
+.list-col > .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin: calc(-8px - env(safe-area-inset-top)) -16px 0;
+  padding: calc(8px + env(safe-area-inset-top)) 16px 0;
+  background: color-mix(in oklch, var(--bg) 80%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
 /* The sync dot sits right after the name (as in Befikr). */
 .topbar h1.brand {
   flex: none;

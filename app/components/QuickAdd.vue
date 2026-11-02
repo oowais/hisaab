@@ -14,6 +14,7 @@ import { TEMPLATES, type Template } from '~/utils/templates'
 const props = defineProps<{ share?: Shared | null; copy?: Detail | null }>()
 const emit = defineEmits<{ close: []; added: [id: string] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 const toast = useToast()
 const today = todayIso()
 
@@ -228,7 +229,13 @@ async function save() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet popover" @submit.prevent="chosen ? save() : choose(matches[0] ?? null)">
+    <form
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      @submit.prevent="chosen ? save() : choose(matches[0] ?? null)"
+    >
       <!-- Step 1: search -->
       <template v-if="!chosen">
         <input

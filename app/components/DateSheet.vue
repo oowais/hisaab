@@ -20,6 +20,7 @@ const props = withDefaults(
 )
 const emit = defineEmits<{ 'update:modelValue': [day: string | null]; close: [] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const today = todayIso()
 const day = ref(props.modelValue ?? (props.min && props.min > today ? props.min : today))
@@ -109,7 +110,14 @@ function clear() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <div class="sheet popover" role="dialog" :aria-label="title">
+    <div
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      :aria-label="title"
+    >
       <header class="head">
         <b>{{ title }}</b>
         <button class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

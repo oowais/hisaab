@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 const toast = useToast()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const today = todayIso()
 const e = props.extra
@@ -88,7 +89,15 @@ async function remove() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet popover" role="dialog" :aria-label="`One-time charge · ${name}`" @submit.prevent="save">
+    <form
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      :aria-label="`One-time charge · ${name}`"
+      @submit.prevent="save"
+    >
       <header class="head">
         <b>{{ name }} · {{ e ? 'one-time charge' : 'add a one-time charge' }}</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

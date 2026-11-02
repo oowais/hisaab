@@ -9,6 +9,7 @@ import type { Detail, Period } from '~/composables/api'
 const props = defineProps<{ sub: Detail; period: Period }>()
 const emit = defineEmits<{ close: []; done: [message: string] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const today = todayIso()
 const ps = props.sub.periods
@@ -46,7 +47,15 @@ async function save() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet popover" role="dialog" :aria-label="`Dates · ${sub.name}`" @submit.prevent="save">
+    <form
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      :aria-label="`Dates · ${sub.name}`"
+      @submit.prevent="save"
+    >
       <header class="head">
         <b>Dates · {{ sub.name }}</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

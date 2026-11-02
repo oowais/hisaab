@@ -5,6 +5,7 @@ import { X } from 'lucide-vue-next'
 const props = defineProps<{ modelValue: string }>()
 const emit = defineEmits<{ 'update:modelValue': [code: string]; close: [] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const query = ref('')
 const all = (() => {
@@ -29,7 +30,14 @@ function pick(c: string) {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <div class="sheet popover" role="dialog" aria-label="Currency">
+    <div
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      aria-label="Currency"
+    >
       <header class="head">
         <!-- :value + @input, not v-model: v-model waits for the Android keyboard to commit the word. -->
         <input

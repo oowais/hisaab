@@ -301,6 +301,15 @@ svg.lucide {
     0 24px 60px -18px var(--glass-shade),
     0 6px 16px -6px var(--glass-lift);
 }
+/* Bottom sheets follow the finger when dragged down (useSheetDrag) and
+   snap back when let go early. */
+.sheet.popover {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sheet.popover.dragging {
+  transition: none;
+  user-select: none;
+}
 
 /* ---- Controls ------------------------------------------------------------ */
 

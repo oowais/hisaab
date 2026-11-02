@@ -10,6 +10,7 @@ import type { Action, Detail, Terms } from '~/composables/api'
 const props = defineProps<{ action: Action; sub: Detail }>()
 const emit = defineEmits<{ close: []; done: [message: string] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const today = todayIso()
 const TITLES: Record<Action, string> = {
@@ -139,7 +140,15 @@ async function run() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet popover" role="dialog" :aria-label="TITLES[action]" @submit.prevent="run">
+    <form
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      :aria-label="TITLES[action]"
+      @submit.prevent="run"
+    >
       <header class="head">
         <b>{{ TITLES[action] }} · {{ sub.name }}</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

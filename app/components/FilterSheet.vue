@@ -10,6 +10,7 @@ const props = defineProps<{ subs: SubscriptionView[]; names: Map<string, string>
 const filter = defineModel<HomeFilter>({ required: true })
 const emit = defineEmits<{ close: [] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const money = (n: number) => formatMoney(n, props.main, { compact: true })
 const yearly = (list: SubscriptionView[]) => list.reduce((sum, s) => sum + (s.yearlyInMain ?? 0), 0)
@@ -42,7 +43,14 @@ const active = computed(() => isFiltered(filter.value))
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <div class="sheet popover" role="dialog" aria-label="Filter">
+    <div
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      aria-label="Filter"
+    >
       <header class="head">
         <b>Show</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

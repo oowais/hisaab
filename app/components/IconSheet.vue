@@ -7,6 +7,7 @@ import { Check, X } from 'lucide-vue-next'
 const props = defineProps<{ icon: string | null; color: string | null; name: string }>()
 const emit = defineEmits<{ pick: [icon: string | null, color: string | null]; close: [] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const icon = ref(props.icon)
 const color = ref(props.color)
@@ -32,7 +33,14 @@ function done() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <div class="sheet popover" role="dialog" aria-label="Icon and colour">
+    <div
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      aria-label="Icon and colour"
+    >
       <header class="head">
         <SubIcon :icon="icon" :color="color" :name="name" :size="44" />
         <!-- :value + @input, not v-model: v-model waits for the Android keyboard to commit the word. -->

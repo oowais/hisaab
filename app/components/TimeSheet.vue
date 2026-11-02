@@ -6,6 +6,7 @@ import { Check, X } from 'lucide-vue-next'
 const props = withDefaults(defineProps<{ modelValue: string; title?: string }>(), { title: 'Time' })
 const emit = defineEmits<{ 'update:modelValue': [hm: string]; close: [] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const hour = ref(Number(props.modelValue.slice(0, 2)) || 0)
 const minute = ref((Math.round(Number(props.modelValue.slice(3, 5)) / 5) * 5) % 60)
@@ -50,7 +51,14 @@ function done() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <div class="sheet popover" role="dialog" :aria-label="title">
+    <div
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      :aria-label="title"
+    >
       <header class="head">
         <b>{{ title }}</b>
         <button class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

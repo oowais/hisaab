@@ -7,6 +7,7 @@ import type { Detail } from '~/composables/api'
 const props = defineProps<{ sub: Detail }>()
 const emit = defineEmits<{ close: []; done: [] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const s = props.sub
 const name = ref(s.name)
@@ -48,7 +49,15 @@ async function save() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet popover" role="dialog" aria-label="Edit" @submit.prevent="save">
+    <form
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      aria-label="Edit"
+      @submit.prevent="save"
+    >
       <header class="head">
         <b>Edit</b>
         <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>

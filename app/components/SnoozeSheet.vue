@@ -7,6 +7,7 @@ import type { SnoozePick } from '~/composables/api'
 const props = defineProps<{ id: string; name: string }>()
 const emit = defineEmits<{ close: []; done: [message: string] }>()
 useBackClose(() => emit('close'))
+const drag = useSheetDrag(() => emit('close'))
 
 const picks = ref<SnoozePick[]>([])
 onMounted(async () => (picks.value = await api.snoozePicks().catch(() => [])))
@@ -34,7 +35,14 @@ async function snoozeTo(day: string | null) {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <div class="sheet popover" role="dialog" aria-label="Snooze reminder">
+    <div
+      class="sheet popover"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
+      v-on="drag.handlers"
+      role="dialog"
+      aria-label="Snooze reminder"
+    >
       <header class="head">
         <b><BellRing :size="18" /> Remind me again · {{ name }}</b>
         <button class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>
