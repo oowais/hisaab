@@ -1993,7 +1993,7 @@ dependencies = [
  "hisaab-core",
  "hisaab-sync",
  "iana-time-zone",
- "jni 0.21.1",
+ "jni 0.22.4",
  "notify-rust",
  "serde",
  "serde_json",
