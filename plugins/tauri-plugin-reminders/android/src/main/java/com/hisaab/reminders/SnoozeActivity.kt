@@ -18,10 +18,11 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import android.view.WindowManager
+import android.view.WindowInsets
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -35,12 +36,12 @@ import java.util.Locale
  * Notification "Snooze": a bottom sheet over whatever is on screen, without
  * opening the app (copied from Befikr). Quick picks come from core (the same
  * as the app's snooze sheet); "Pick a day" opens the app's sheet. Closes on a
- * choice, a tap outside, or Back.
+ * choice, a tap outside, dragging it down, or Back.
  */
 class SnoozeActivity : Activity() {
     private lateinit var subId: String
     private lateinit var dim: View
-    private lateinit var sheet: LinearLayout
+    private lateinit var sheet: Sheet
     private var closing = false
 
     private val dark get() =
@@ -55,8 +56,17 @@ class SnoozeActivity : Activity() {
         subId = intent.getStringExtra(EXTRA_ID) ?: return finish()
         val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
 
-        // Draw under the navigation bar; the sheet pads itself above it.
-        window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+        // Draw under the navigation bar; the sheet pads itself above it. Not
+        // FLAG_LAYOUT_NO_LIMITS: with it the sheet could end up at the top of
+        // the screen instead of rising from the bottom. The window fills the
+        // screen so the sheet sits at its bottom.
+        window.setLayout(MATCH_PARENT, MATCH_PARENT)
+        if (Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(false)
+        } else {
+            window.decorView.systemUiVisibility =
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        }
         window.navigationBarColor = Color.TRANSPARENT
 
         val root = FrameLayout(this)
@@ -67,14 +77,13 @@ class SnoozeActivity : Activity() {
         }
         root.addView(dim, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
-        sheet = LinearLayout(this).apply {
+        sheet = Sheet().apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 setColor(sheetColor)
                 val r = dp(24f)
                 cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
             }
-            isClickable = true // taps inside don't reach the dim layer
             setPadding(dp(20), dp(10), dp(20), dp(20))
         }
         sheet.addView(handle())
@@ -91,8 +100,13 @@ class SnoozeActivity : Activity() {
         })
         root.addView(sheet, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
         sheet.setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(dp(20), dp(10), dp(20), dp(20) + insets.systemWindowInsetBottom)
+            val bottom = if (Build.VERSION.SDK_INT >= 30) {
+                insets.getInsets(WindowInsets.Type.navigationBars()).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.stableInsetBottom
+            }
+            v.setPadding(dp(20), dp(10), dp(20), dp(20) + bottom)
             insets
         }
         setContentView(root)
@@ -124,6 +138,44 @@ class SnoozeActivity : Activity() {
         }
         // Odd count: keep the last pick half width.
         if (picks.length() % 2 == 1) row!!.addView(View(this), cell())
+    }
+
+    /**
+     * The sheet. Drag it down from anywhere to close it; short drags snap back
+     * (like the app's sheets). It takes the gesture from the picks only once
+     * the finger has clearly moved down, so taps still pick.
+     */
+    private inner class Sheet : LinearLayout(this@SnoozeActivity) {
+        private val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+        private var startY = 0f
+        private var dragging = false
+
+        override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    startY = e.rawY
+                    dragging = false
+                }
+                MotionEvent.ACTION_MOVE -> if (e.rawY - startY > slop) dragging = true
+            }
+            return dragging
+        }
+
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> startY = e.rawY
+                MotionEvent.ACTION_MOVE -> {
+                    if (!dragging && e.rawY - startY > slop) dragging = true
+                    if (dragging) translationY = (e.rawY - startY).coerceAtLeast(0f)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (dragging && translationY > dp(90f)) close()
+                    else animate().translationY(0f).setDuration(180).start()
+                    dragging = false
+                }
+            }
+            return true // taps inside don't reach the dim layer
+        }
     }
 
     private fun snooze(untilMs: Long) =
