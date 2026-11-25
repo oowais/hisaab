@@ -254,12 +254,12 @@ jobs:
         with:
           pattern: hisaab-${{ needs.apk.outputs.version }}-*
           merge-multiple: true
-      - uses: softprops/action-gh-release@v3
-        with:
-          tag_name: v${{ needs.apk.outputs.version }}
-          files: |
-            hisaab_*_amd64.deb
-            hisaab-x86_64.AppImage
-            PKGBUILD
-            hisaab_*_x64-setup.exe
-            latest.json
+      # Upload only: action-gh-release also PATCHes the release, which GitHub
+      # refuses here ("Resource not accessible by integration", Nov 25, 2026).
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "v${{ needs.apk.outputs.version }}" --clobber \
+            hisaab_*_amd64.deb hisaab-x86_64.AppImage PKGBUILD hisaab_*_x64-setup.exe latest.json
