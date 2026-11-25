@@ -22,6 +22,12 @@ object Native {
     /** Snooze until [untilMs]. → `{"next": Reminder?}` */
     external fun snooze(dbPath: String, subscriptionId: String, untilMs: Long, tz: String): String
 
+    /** "Pay now": that charge ([charge]: `ChargeRef` JSON) paid today. → `{"undo": PayUndo?, "next": Reminder?}` */
+    external fun payNow(dbPath: String, subscriptionId: String, charge: String, tz: String): String
+
+    /** Undo "Pay now" ([undo]: `PayUndo` JSON). → `{"next": Reminder?}` */
+    external fun undoPay(dbPath: String, subscriptionId: String, undo: String, tz: String): String
+
     /** Consistent snapshot of the database to [outPath]. → `{}` */
     external fun exportTo(dbPath: String, outPath: String): String
 

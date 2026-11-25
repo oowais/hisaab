@@ -23,7 +23,7 @@ mod fx;
 pub use conflicts::Conflict;
 pub use model::*;
 pub use overview::{per_year, Detail, MonthCharges, HistoryCharge, Overview, SubscriptionView, TimelineLane, UpcomingCharge, Widget, WidgetCharge};
-pub use reminders::{snooze_picks, Fired, Reminder, SnoozePick};
+pub use reminders::{snooze_picks, ChargeRef, Fired, Paid, PayUndo, Reminder, SnoozePick};
 pub use stats::{MonthSpend, Slice, Stats};
 pub use store::{Settings, Store};
 pub use peers::{Peer, SyncMode, SyncSettings};

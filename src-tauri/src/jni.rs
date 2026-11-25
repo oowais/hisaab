@@ -5,7 +5,7 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-use hisaab_core::{MergeOutcome, Store, SyncMode};
+use hisaab_core::{ChargeRef, MergeOutcome, PayUndo, Store, SyncMode};
 use jni::objects::{JClass, JString};
 use jni::sys::jlong;
 use jni::{Env, EnvUnowned, Outcome};
@@ -97,6 +97,43 @@ pub extern "system" fn Java_com_hisaab_reminders_Native_snooze<'l>(
     respond(&mut env, |env| {
         let (path, id, tz) = (arg(env, &db_path)?, arg(env, &sub_id)?, arg(env, &tz)?);
         let next = store(&path)?.snooze_reminder(&id, until_ms, now_ms(), &tz).map_err(|e| e.to_string())?;
+        Ok(json!({ "next": next }))
+    })
+}
+
+/// Notification "Pay now": that charge (`ChargeRef` JSON) paid today.
+/// → `{"undo": PayUndo?, "next": Reminder?}`
+#[no_mangle]
+pub extern "system" fn Java_com_hisaab_reminders_Native_payNow<'l>(
+    mut env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    sub_id: JString<'l>,
+    charge: JString<'l>,
+    tz: JString<'l>,
+) -> JString<'l> {
+    respond(&mut env, |env| {
+        let (path, id, charge, tz) = (arg(env, &db_path)?, arg(env, &sub_id)?, arg(env, &charge)?, arg(env, &tz)?);
+        let charge: ChargeRef = serde_json::from_str(&charge).map_err(|e| e.to_string())?;
+        let paid = store(&path)?.pay_now(&id, &charge, now_ms(), &tz).map_err(|e| e.to_string())?;
+        serde_json::to_value(paid).map_err(|e| e.to_string())
+    })
+}
+
+/// Undo "Pay now" (`PayUndo` JSON). → `{"next": Reminder?}`
+#[no_mangle]
+pub extern "system" fn Java_com_hisaab_reminders_Native_undoPay<'l>(
+    mut env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    sub_id: JString<'l>,
+    undo: JString<'l>,
+    tz: JString<'l>,
+) -> JString<'l> {
+    respond(&mut env, |env| {
+        let (path, id, undo, tz) = (arg(env, &db_path)?, arg(env, &sub_id)?, arg(env, &undo)?, arg(env, &tz)?);
+        let undo: PayUndo = serde_json::from_str(&undo).map_err(|e| e.to_string())?;
+        let next = store(&path)?.undo_pay(&id, &undo, now_ms(), &tz).map_err(|e| e.to_string())?;
         Ok(json!({ "next": next }))
     })
 }

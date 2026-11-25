@@ -211,5 +211,10 @@ pub fn migrations() -> Migrations<'static> {
               value TEXT NOT NULL      -- JSON
             );",
         ),
+        // A snoozed reminder remembers its charge ("Pay now" when it shows again).
+        M::up(
+            "ALTER TABLE reminder_state ADD COLUMN snooze_period_id TEXT;
+             ALTER TABLE reminder_state ADD COLUMN snooze_due TEXT;",
+        ),
     ])
 }

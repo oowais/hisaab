@@ -163,3 +163,99 @@ fn off_is_this_device_only() {
     assert!(b.settings().unwrap().reminders_on);
     assert_eq!(b.reminders(at("2026-02-01", "12:00"), TZ).unwrap().len(), 1);
 }
+
+/// Netflix €4.99 on the 15th; its 12 Feb reminder has fired. → (store, id, charge)
+fn fired_netflix(days: Option<u32>) -> (Store, String, ChargeRef) {
+    let mut s = Store::open_in_memory().unwrap();
+    let id = add(&mut s, "Netflix", monthly(499), "2026-01-15", None, days);
+    s.reminders(at("2026-02-01", "12:00"), TZ).unwrap();
+    let day = if days == Some(0) { "2026-02-15" } else { "2026-02-12" };
+    let shown = s.on_fired(&id, at(day, "09:00"), TZ).unwrap().show.unwrap();
+    let charge = shown.charge.unwrap();
+    assert_eq!(charge.scheduled_date, d("2026-02-15"));
+    (s, id, charge)
+}
+
+#[test]
+fn pay_now_moves_only_that_charge_to_today() {
+    let (mut s, id, charge) = fired_netflix(None);
+    let paid = s.pay_now(&id, &charge, at("2026-02-12", "10:00"), TZ).unwrap();
+    assert_eq!(paid.label, "Netflix · €4.99 paid today");
+    let o = &s.subscription(&id).unwrap().overrides;
+    assert_eq!(o.len(), 1);
+    assert_eq!((o[0].kind, o[0].due_date, o[0].new_due_date), (OverrideKind::Moved, d("2026-02-15"), Some(d("2026-02-12"))));
+    // The schedule goes on: next month's reminder as usual.
+    let next = paid.next.unwrap();
+    assert_eq!((next.at_ms, next.charge.unwrap().scheduled_date), (at("2026-03-12", "09:00"), d("2026-03-15")));
+    // Undo: the charge follows its schedule again.
+    let next = s.undo_pay(&id, &paid.undo.unwrap(), at("2026-02-12", "10:01"), TZ).unwrap();
+    assert!(s.subscription(&id).unwrap().overrides.is_empty());
+    assert_eq!(next.unwrap().at_ms, at("2026-03-12", "09:00"));
+}
+
+#[test]
+fn snoozed_reminder_keeps_its_charge_and_pays_it() {
+    let (mut s, id, charge) = fired_netflix(None);
+    let until = at("2026-02-16", "09:00");
+    let next = s.snooze_reminder(&id, until, at("2026-02-12", "09:05"), TZ).unwrap().unwrap();
+    assert_eq!(next.charge.as_ref(), Some(&charge));
+    // Snoozing doesn't move it.
+    assert!(s.subscription(&id).unwrap().overrides.is_empty());
+    let shown = s.on_fired(&id, until, TZ).unwrap().show.unwrap();
+    assert_eq!(shown.charge.as_ref(), Some(&charge));
+    // Paid late: moved to the day it was paid.
+    s.pay_now(&id, &charge, until + 60_000, TZ).unwrap();
+    assert_eq!(s.subscription(&id).unwrap().overrides[0].new_due_date, Some(d("2026-02-16")));
+}
+
+#[test]
+fn pay_now_keeps_a_changed_amount() {
+    let (mut s, id, charge) = fired_netflix(None);
+    s.set_override(&NewOverride {
+        period_id: charge.period_id.clone(),
+        due_date: charge.scheduled_date,
+        kind: OverrideKind::AmountChanged,
+        new_due_date: None,
+        actual_amount_minor: Some(599),
+        actual_currency: Some("EUR".into()),
+        settled_amount_minor: None,
+        settled_currency: None,
+    })
+    .unwrap();
+    let paid = s.pay_now(&id, &charge, at("2026-02-12", "10:00"), TZ).unwrap();
+    assert_eq!(paid.label, "Netflix · €5.99 paid today");
+    let o = s.subscription(&id).unwrap().overrides.remove(0);
+    assert_eq!((o.kind, o.actual_amount_minor, o.new_due_date), (OverrideKind::AmountChanged, Some(599), Some(d("2026-02-12"))));
+    s.undo_pay(&id, &paid.undo.unwrap(), at("2026-02-12", "10:01"), TZ).unwrap();
+    let o = s.subscription(&id).unwrap().overrides.remove(0);
+    assert_eq!((o.kind, o.actual_amount_minor, o.new_due_date), (OverrideKind::AmountChanged, Some(599), None));
+}
+
+#[test]
+fn pay_now_on_the_due_day_changes_nothing() {
+    let (mut s, id, charge) = fired_netflix(Some(0));
+    let paid = s.pay_now(&id, &charge, at("2026-02-15", "09:01"), TZ).unwrap();
+    assert_eq!(paid.undo, None);
+    assert!(s.subscription(&id).unwrap().overrides.is_empty());
+    assert_eq!(paid.next.unwrap().at_ms, at("2026-03-15", "09:00"));
+}
+
+#[test]
+fn paid_early_with_no_notice_days_doesnt_ring_later_today() {
+    let mut s = Store::open_in_memory().unwrap();
+    let id = add(&mut s, "Gym", monthly(3000), "2026-01-15", None, Some(0));
+    let r = s.reminders(at("2026-02-10", "08:00"), TZ).unwrap().remove(0);
+    let charge = r.charge.unwrap();
+    // Paid on the 15th at 08:00: the charge is already due today (no move),
+    // and its 09:00 reminder is done.
+    let paid = s.pay_now(&id, &charge, at("2026-02-15", "08:00"), TZ).unwrap();
+    assert_eq!(paid.next.unwrap().at_ms, at("2026-03-15", "09:00"));
+}
+
+#[test]
+fn trial_notice_has_no_charge() {
+    let mut s = Store::open_in_memory().unwrap();
+    add(&mut s, "Claude", monthly(2000), "2026-02-01", Some("2026-02-14"), None);
+    let rs = s.reminders(at("2026-02-01", "08:00"), TZ).unwrap();
+    assert_eq!(rs[0].charge, None);
+}

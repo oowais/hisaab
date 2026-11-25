@@ -11,6 +11,11 @@
 //!
 //! Platforms (Android alarms, the desktop scheduler) only arm what
 //! `reminders` returns and call `on_fired` when an alarm goes off.
+//!
+//! A charge reminder knows its charge (`ChargeRef`), also when snoozed, so
+//! "Pay now" on the notification (`pay_now`) can move that one charge to
+//! today: the only thing that changes a date. Snoozing or ignoring a
+//! reminder leaves the charge on its schedule.
 
 use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
@@ -21,7 +26,8 @@ use crate::currency::minor_digits;
 use crate::model::*;
 use crate::occurrence::occurrences;
 use crate::store::Store;
-use crate::Result;
+use crate::subscriptions::NewOverride;
+use crate::{Error, Result};
 
 /// Days before a trial ends to say so.
 pub const TRIAL_NOTICE_DAYS: i64 = 2;
@@ -39,6 +45,38 @@ pub struct Reminder {
     pub at_ms: i64,
     /// Where tapping it opens the app.
     pub route: String,
+    /// The charge it's about (none for a trial notice): "Pay now".
+    #[serde(default)]
+    pub charge: Option<ChargeRef>,
+}
+
+/// One scheduled charge: its period and the date the rule gave (what an
+/// override is keyed by, even after the charge was moved).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChargeRef {
+    pub period_id: String,
+    pub scheduled_date: NaiveDate,
+}
+
+/// What `pay_now` changed, to put back with `undo_pay`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PayUndo {
+    pub charge: ChargeRef,
+    /// The charge's override before (none: it followed the schedule).
+    pub before: Option<ChargeOverride>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Paid {
+    /// For the notification: "Netflix · €4.99 paid today".
+    pub label: String,
+    /// None when nothing changed (the charge was already due today).
+    pub undo: Option<PayUndo>,
+    /// The subscription's next alarm.
+    pub next: Option<Reminder>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -108,7 +146,27 @@ fn day_text(d: NaiveDate) -> String {
 
 struct State {
     fired_through: i64,
-    snooze: Option<(i64, String, String)>,
+    snooze: Option<Snooze>,
+}
+
+struct Snooze {
+    at: i64,
+    title: String,
+    text: String,
+    charge: Option<ChargeRef>,
+}
+
+impl Snooze {
+    fn reminder(self, id: &str) -> Reminder {
+        Reminder {
+            subscription_id: id.into(),
+            title: self.title,
+            text: self.text,
+            at_ms: self.at,
+            route: format!("/sub/{id}"),
+            charge: self.charge,
+        }
+    }
 }
 
 impl Store {
@@ -116,16 +174,31 @@ impl Store {
         let row = self
             .conn
             .query_row(
-                "SELECT fired_through, snooze_at, snooze_title, snooze_text FROM reminder_state WHERE subscription_id = ?1",
+                "SELECT fired_through, snooze_at, snooze_title, snooze_text, snooze_period_id, snooze_due
+                 FROM reminder_state WHERE subscription_id = ?1",
                 [id],
-                |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?, r.get::<_, Option<String>>(2)?, r.get::<_, Option<String>>(3)?)),
+                |r| {
+                    let charge = match (r.get::<_, Option<String>>(4)?, r.get::<_, Option<String>>(5)?) {
+                        (Some(period_id), Some(due)) => due
+                            .parse()
+                            .ok()
+                            .map(|scheduled_date| ChargeRef { period_id, scheduled_date }),
+                        _ => None,
+                    };
+                    let snooze = r.get::<_, Option<i64>>(1)?.map(|at| -> rusqlite::Result<Snooze> {
+                        Ok(Snooze {
+                            at,
+                            title: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                            text: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                            charge,
+                        })
+                    });
+                    Ok(State { fired_through: r.get(0)?, snooze: snooze.transpose()? })
+                },
             )
             .optional()?;
         Ok(match row {
-            Some((fired_through, at, title, text)) => State {
-                fired_through,
-                snooze: at.map(|at| (at, title.unwrap_or_default(), text.unwrap_or_default())),
-            },
+            Some(state) => state,
             None => {
                 // First sight: nothing before now fires.
                 self.conn.execute(
@@ -163,6 +236,7 @@ impl Store {
                     text: day_text(c.due_date),
                     at_ms: local_ms(day, time, tz),
                     route: route.clone(),
+                    charge: Some(ChargeRef { period_id: c.period_id.clone(), scheduled_date: c.scheduled_date }),
                 }
             })
             .collect();
@@ -175,6 +249,7 @@ impl Store {
                 text: format!("Last day {}", day_text(end)),
                 at_ms: local_ms(day, time, tz),
                 route: route.clone(),
+                charge: None,
             });
         }
         // Stable: a trial notice (pushed last) goes before a charge reminder at
@@ -185,14 +260,8 @@ impl Store {
 
     fn next_for(&self, s: &SubscriptionDetail, now_ms: i64, tz: Tz) -> Result<Option<Reminder>> {
         let state = self.reminder_state(&s.subscription.id, now_ms)?;
-        if let Some((at, title, text)) = state.snooze.filter(|(at, ..)| *at > state.fired_through) {
-            return Ok(Some(Reminder {
-                subscription_id: s.subscription.id.clone(),
-                title,
-                text,
-                at_ms: at,
-                route: format!("/sub/{}", s.subscription.id),
-            }));
+        if let Some(snooze) = state.snooze.filter(|z| z.at > state.fired_through) {
+            return Ok(Some(snooze.reminder(&s.subscription.id)));
         }
         let today = local_day(now_ms, tz);
         Ok(self.candidates(s, today, tz)?.into_iter().find(|r| r.at_ms > state.fired_through))
@@ -224,14 +293,8 @@ impl Store {
         }
         let state = self.reminder_state(id, now_ms)?;
         let due = now_ms + SLACK_MS;
-        let show = match state.snooze.as_ref().filter(|(at, ..)| *at > state.fired_through && *at <= due) {
-            Some((at, title, text)) => Some(Reminder {
-                subscription_id: id.into(),
-                title: title.clone(),
-                text: text.clone(),
-                at_ms: *at,
-                route: format!("/sub/{id}"),
-            }),
+        let show = match state.snooze.filter(|z| z.at > state.fired_through && z.at <= due) {
+            Some(snooze) => Some(snooze.reminder(id)),
             None => self
                 .candidates(&s, local_day(now_ms, tz), tz)?
                 .into_iter()
@@ -242,7 +305,8 @@ impl Store {
         };
         if let Some(r) = &show {
             self.conn.execute(
-                "UPDATE reminder_state SET fired_through = ?2, snooze_at = NULL, snooze_title = NULL, snooze_text = NULL
+                "UPDATE reminder_state SET fired_through = ?2, snooze_at = NULL, snooze_title = NULL, snooze_text = NULL,
+                   snooze_period_id = NULL, snooze_due = NULL
                  WHERE subscription_id = ?1",
                 params![id, r.at_ms.max(now_ms)],
             )?;
@@ -258,20 +322,114 @@ impl Store {
         let state = self.reminder_state(id, now_ms)?;
         // What's being snoozed: the snoozed one, else the latest shown, else the next.
         let all = self.candidates(&s, local_day(now_ms, tz) - Duration::days(1), tz)?;
-        let (title, text) = match state.snooze {
-            Some((_, title, text)) => (title, text),
+        let (title, text, charge) = match state.snooze {
+            Some(z) => (z.title, z.text, z.charge),
             None => all
                 .iter()
                 .rfind(|r| r.at_ms <= now_ms + SLACK_MS)
                 .or_else(|| all.first())
-                .map(|r| (r.title.clone(), r.text.clone()))
-                .unwrap_or_else(|| (s.subscription.name.clone(), String::new())),
+                .map(|r| (r.title.clone(), r.text.clone(), r.charge.clone()))
+                .unwrap_or_else(|| (s.subscription.name.clone(), String::new(), None)),
         };
+        let (period_id, due) = charge.map(|c| (c.period_id, c.scheduled_date.to_string())).unzip();
         self.conn.execute(
-            "UPDATE reminder_state SET snooze_at = ?2, snooze_title = ?3, snooze_text = ?4 WHERE subscription_id = ?1",
-            params![id, until_ms, title, text],
+            "UPDATE reminder_state SET snooze_at = ?2, snooze_title = ?3, snooze_text = ?4, snooze_period_id = ?5, snooze_due = ?6
+             WHERE subscription_id = ?1",
+            params![id, until_ms, title, text, period_id, due],
         )?;
         self.next_for(&s, now_ms, tz)
+    }
+
+    /// "Pay now" on a reminder: that one charge is paid today (moved to
+    /// today; an amount it already had is kept). Its reminder is done (the
+    /// snooze too). Returns what to undo and the next alarm.
+    pub fn pay_now(&mut self, id: &str, charge: &ChargeRef, now_ms: i64, tz: &str) -> Result<Paid> {
+        let tz = parse_tz(tz);
+        let today = local_day(now_ms, tz);
+        let before = self.override_of(id, charge)?;
+        let kind = before.as_ref().map_or(OverrideKind::Moved, |o| o.kind);
+        if kind == OverrideKind::Skipped {
+            return Err(Error::Invalid("that charge was skipped".into()));
+        }
+        let due = before.as_ref().and_then(|o| o.new_due_date).unwrap_or(charge.scheduled_date);
+        let undo = if due == today {
+            None
+        } else {
+            match (&before, kind) {
+                // Back on its scheduled day: the plain charge again.
+                (Some(o), OverrideKind::Moved) if today == charge.scheduled_date => self.delete_override(&o.id)?,
+                _ => {
+                    let keep = before.clone();
+                    self.set_override(&NewOverride {
+                        period_id: charge.period_id.clone(),
+                        due_date: charge.scheduled_date,
+                        kind,
+                        new_due_date: Some(today),
+                        actual_amount_minor: keep.as_ref().and_then(|o| o.actual_amount_minor),
+                        actual_currency: keep.as_ref().and_then(|o| o.actual_currency.clone()),
+                        settled_amount_minor: keep.as_ref().and_then(|o| o.settled_amount_minor),
+                        settled_currency: keep.and_then(|o| o.settled_currency),
+                    })?;
+                }
+            }
+            Some(PayUndo { charge: charge.clone(), before })
+        };
+        let s = self.subscription(id)?;
+        let label = occurrences(&s.periods, &s.overrides, today, today, today)
+            .into_iter()
+            .find(|c| c.period_id == charge.period_id && c.scheduled_date == charge.scheduled_date)
+            .map_or_else(
+                || format!("{} paid today", s.subscription.name),
+                |c| format!("{} · {} paid today", s.subscription.name, money_text(c.amount_minor, &c.currency)),
+            );
+        // Done through its own reminder too (one later today: 0 days before).
+        let own = self
+            .candidates(&s, today, tz)?
+            .into_iter()
+            .filter(|r| r.charge.as_ref() == Some(charge))
+            .map(|r| r.at_ms)
+            .max();
+        let state = self.reminder_state(id, now_ms)?;
+        self.conn.execute(
+            "UPDATE reminder_state SET fired_through = ?2, snooze_at = NULL, snooze_title = NULL, snooze_text = NULL,
+               snooze_period_id = NULL, snooze_due = NULL
+             WHERE subscription_id = ?1",
+            params![id, state.fired_through.max(now_ms).max(own.unwrap_or(0))],
+        )?;
+        Ok(Paid { label, undo, next: self.next_for(&s, now_ms, tz)? })
+    }
+
+    /// Undo `pay_now`: the charge's override as it was. Returns the next alarm.
+    pub fn undo_pay(&mut self, id: &str, undo: &PayUndo, now_ms: i64, tz: &str) -> Result<Option<Reminder>> {
+        match &undo.before {
+            Some(o) => {
+                self.set_override(&NewOverride {
+                    period_id: o.period_id.clone(),
+                    due_date: o.due_date,
+                    kind: o.kind,
+                    new_due_date: o.new_due_date,
+                    actual_amount_minor: o.actual_amount_minor,
+                    actual_currency: o.actual_currency.clone(),
+                    settled_amount_minor: o.settled_amount_minor,
+                    settled_currency: o.settled_currency.clone(),
+                })?;
+            }
+            None => {
+                if let Some(o) = self.override_of(id, &undo.charge)? {
+                    self.delete_override(&o.id)?;
+                }
+            }
+        }
+        let s = self.subscription(id)?;
+        self.next_for(&s, now_ms, parse_tz(tz))
+    }
+
+    fn override_of(&self, id: &str, charge: &ChargeRef) -> Result<Option<ChargeOverride>> {
+        Ok(self
+            .subscription(id)?
+            .overrides
+            .into_iter()
+            .find(|o| o.period_id == charge.period_id && o.due_date == charge.scheduled_date))
     }
 }
 

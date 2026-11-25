@@ -20,6 +20,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import org.json.JSONArray
+import java.lang.ref.WeakReference
 
 /** A URL (update download, a page to open). */
 @InvokeArg
@@ -41,6 +42,7 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     private var configured = false
 
     override fun load(webView: WebView) {
+        current = WeakReference(this)
         // Page background until the splash paints (no white flash on cold start).
         webView.setBackgroundColor(activity.getColor(R.color.hisaab_window))
         Notifier.ensureChannel(activity)
@@ -251,6 +253,16 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         background(invoke) {
             val file = Backup.importToCache(activity, uri)
             JSObject().apply { put("path", file.absolutePath) }
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var current: WeakReference<RemindersPlugin>? = null
+
+        /** Written outside the app (a notification's Pay now): an open app reloads. */
+        fun dataChanged() {
+            current?.get()?.trigger("dataChanged", JSObject())
         }
     }
 

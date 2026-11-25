@@ -22,7 +22,13 @@ private val VIBRATION = longArrayOf(0, 300, 150, 300)
 internal const val EXTRA_ID = "hisaab.id"
 internal const val EXTRA_TITLE = "hisaab.title"
 internal const val EXTRA_ROUTE = "hisaab.route"
+internal const val EXTRA_REMINDER = "hisaab.reminder"
+internal const val EXTRA_UNDO = "hisaab.undo"
 internal const val ACTION_FIRE = "com.hisaab.reminders.FIRE"
+internal const val ACTION_PAY = "com.hisaab.reminders.PAY"
+internal const val ACTION_UNDO_PAY = "com.hisaab.reminders.UNDO_PAY"
+/** How long "Paid today" stays up with its Undo. */
+private const val PAID_UNDO_MS = 10_000L
 private const val PREFS = "hisaab.reminders"
 private const val PREF_DB_PATH = "dbPath"
 private const val PREF_ARMED = "armed"
@@ -136,8 +142,12 @@ internal object Notifier {
         }
     }
 
-    /** A reminder (core `Reminder` JSON): tap opens the subscription; Snooze shows the overlay. */
-    fun show(ctx: Context, r: JSONObject) {
+    /**
+     * A reminder (core `Reminder` JSON): tap opens the subscription; Pay now
+     * (a charge's) marks it paid today; Snooze shows the overlay. [quiet]:
+     * put back after an undo, without sound.
+     */
+    fun show(ctx: Context, r: JSONObject, quiet: Boolean = false) {
         ensureChannel(ctx)
         val id = r.getString("subscriptionId")
         val title = r.getString("title")
@@ -149,22 +159,56 @@ internal object Notifier {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVibrate(VIBRATION)
+            .setSilent(quiet)
             .setAutoCancel(true)
             // Unique group per subscription: try to stop Android auto-bundling.
             .setGroup("sub-$id")
             .setContentIntent(launchPendingIntent(ctx, id, route))
-            .addAction(0, "Open", launchPendingIntent(ctx, id, route))
-            .addAction(
-                0,
-                "Snooze",
-                PendingIntent.getActivity(ctx, 0, SnoozeActivity.intent(ctx, id, title), PI_FLAGS)
-            )
-            .build()
+        if (r.optJSONObject("charge") != null) {
+            n.addAction(0, "Pay now", payPendingIntent(ctx, ACTION_PAY, r, null))
+        }
+        n.addAction(
+            0,
+            "Snooze",
+            PendingIntent.getActivity(ctx, 0, SnoozeActivity.intent(ctx, id, title), PI_FLAGS)
+        )
+        n.addAction(0, "Open", launchPendingIntent(ctx, id, route))
+        post(ctx, id, n)
+    }
+
+    /** After Pay now, in the reminder's place for a few seconds: [label] and Undo (when something changed). */
+    fun showPaid(ctx: Context, r: JSONObject, label: String, undo: JSONObject?) {
+        val id = r.getString("subscriptionId")
+        val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
+            .setSmallIcon(smallIcon(ctx))
+            .setContentTitle(label)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setTimeoutAfter(PAID_UNDO_MS)
+            .setGroup("sub-$id")
+            .setContentIntent(launchPendingIntent(ctx, id, r.optString("route", "/")))
+        if (undo != null) n.addAction(0, "Undo", payPendingIntent(ctx, ACTION_UNDO_PAY, r, undo))
+        post(ctx, id, n)
+    }
+
+    private fun post(ctx: Context, id: String, n: NotificationCompat.Builder) {
         try {
-            NotificationManagerCompat.from(ctx).notify(notificationId(id), n)
+            NotificationManagerCompat.from(ctx).notify(notificationId(id), n.build())
         } catch (e: SecurityException) {
             Log.e(TAG, "notification permission missing", e)
         }
+    }
+
+    private fun payPendingIntent(ctx: Context, action: String, r: JSONObject, undo: JSONObject?): PendingIntent {
+        val id = r.getString("subscriptionId")
+        val intent = Intent(ctx, PayReceiver::class.java)
+            .setAction(action)
+            .setData(uri(id, if (action == ACTION_PAY) "pay" else "undo-pay"))
+            .putExtra(EXTRA_ID, id)
+            .putExtra(EXTRA_REMINDER, r.toString())
+        undo?.let { intent.putExtra(EXTRA_UNDO, it.toString()) }
+        return PendingIntent.getBroadcast(ctx, 0, intent, PI_FLAGS)
     }
 
     fun cancel(ctx: Context, id: String) = NotificationManagerCompat.from(ctx).cancel(notificationId(id))
