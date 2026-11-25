@@ -21,7 +21,7 @@ Android, Windows and Linux, from the [latest release](https://github.com/oowais/
 
 - **Android** (8+, arm64): `hisaab.apk`.
 - **Windows**: `hisaab_<version>_x64-setup.exe`.
-- **Arch / CachyOS**: `scripts/install-arch.sh` installs or updates it as `hisaab-bin`. Other distributions: the `.deb`.
+- **Arch / CachyOS**: `scripts/install-arch.sh` installs or updates it as `hisaab-bin`, or add `hisaab-x86_64.AppImage` from GitHub (`oowais/hisaab`) in the CachyOS Package Installer, which also updates it. The AppImage uses the system's `webkit2gtk-4.1`, `gtk3` and `libayatana-appindicator`. Other distributions: the `.deb` or the AppImage.
 
 ## Build
 

@@ -1,7 +1,7 @@
 name: release
 
 # Builds and releases on every push to main that changes the app (or by
-# hand): the APK, the Linux .deb + Arch PKGBUILD and the Windows installer,
+# hand): the APK, the Linux .deb + AppImage + Arch PKGBUILD and the Windows installer,
 # all attached to one GitHub release. Installed apps update from it in-app
 # (Android: APK, Windows: signed installer via latest.json; Linux:
 # scripts/install-arch.sh). PRs get lint and tests only (core.yml, web.yml).
@@ -144,8 +144,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: hisaab.apk
 
-  # Linux: the .deb, and the Arch PKGBUILD that repackages it
-  # (scripts/install-arch.sh installs it).
+  # Linux: the .deb, the Arch PKGBUILD that repackages it
+  # (scripts/install-arch.sh installs it), and an AppImage of the same binary
+  # under a fixed name, for AppImage managers (CachyOS Package Installer)
+  # that pick it from the latest release.
   linux:
     runs-on: ubuntu-24.04
     steps:
@@ -170,11 +172,20 @@ jobs:
           SHA=$(sha256sum "$DEB" | cut -d' ' -f1)
           sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA/" packaging/arch/PKGBUILD.in > PKGBUILD
           ls -la "$DEB" PKGBUILD
+      # appimagetool pinned by version and checksum.
+      - name: AppImage
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  $RUNNER_TEMP/appimagetool" | sha256sum -c
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          packaging/linux/build-appimage.sh "$RUNNER_TEMP/appimagetool" "$VERSION" hisaab-x86_64.AppImage
       - uses: actions/upload-artifact@v7
         with:
           name: hisaab-${{ env.VERSION }}-linux
           path: |
             hisaab_*_amd64.deb
+            hisaab-x86_64.AppImage
             PKGBUILD
 
   # Windows: the NSIS installer (unsigned, so SmartScreen asks once).
@@ -242,6 +253,7 @@ jobs:
           tag_name: v${{ needs.apk.outputs.version }}
           files: |
             hisaab_*_amd64.deb
+            hisaab-x86_64.AppImage
             PKGBUILD
             hisaab_*_x64-setup.exe
             latest.json

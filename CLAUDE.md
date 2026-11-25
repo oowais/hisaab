@@ -40,7 +40,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · Vite+ 
 
 ## Releases and signing
 
-- `release.yml`: every push to `main` that changes the app builds the APK, Linux `.deb` + Arch `PKGBUILD` and Windows NSIS installer + `latest.json`, and attaches them to release `v0.x.y`. Android builds only run in CI.
+- `release.yml`: every push to `main` that changes the app builds the APK, Linux `.deb` + `hisaab-x86_64.AppImage` (`packaging/linux/build-appimage.sh`, fixed name for AppImage managers like the CachyOS Package Installer; system WebKitGTK, not Tauri's bundled AppImage) + Arch `PKGBUILD` and Windows NSIS installer + `latest.json`, and attaches them to release `v0.x.y`. Android builds only run in CI.
 - Android signing key: `~/.tauri/hisaab-sideload.p12` (+ `.pass`), CI secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` (`src-tauri/android/README.md`). Windows updater key: `~/.tauri/hisaab-updater.key` (no password), secret `TAURI_SIGNING_PRIVATE_KEY`; public key in `src-tauri/tauri.conf.json`. Never generate new keys: installed apps would reject updates.
 - Linux install/update: `scripts/install-arch.sh` (also usable as a Vicinae script).
 - Dependabot opens monthly PRs; Tauri crate and `@tauri-apps/*` must be merged together.
