@@ -170,7 +170,7 @@ Copy Befikr's scheduler.
 
 - N days before charge (per-subscription override) at configured time: "Netflix · €4.99 in 3 days".
 - Trial ending: 2 days before trial end.
-- Actions: **Pay now** (charge reminders, Android) · **Snooze** (date/time picker, like Befikr) · **Open**.
+- Actions: **Pay now** (charge reminders; Android and Windows pay from the notification, Linux opens the app's Pay sheet) · **Snooze** (date/time picker, like Befikr) · **Open**.
 - Snooze only reminds again; the charge stays on its date. **Pay now** is the only action that moves it: that one charge to today (a changed amount kept), then "Paid today" with **Undo** for 10 s. A snoozed reminder remembers its charge.
 - Reschedule on any period/override change and on app start.
 

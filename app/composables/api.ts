@@ -122,6 +122,12 @@ export type Settings = {
   monthlyBudget: number | null
 }
 export type SnoozePick = { label: string; atMs: number }
+/** One scheduled charge: its period and the date the rule gave. */
+export type ChargeRef = { periodId: string; scheduledDate: string }
+/** What "Pay now" changed, handed back to undo it (opaque here). */
+export type PayUndo = { charge: ChargeRef; before: unknown }
+/** The toast's text, and what to undo (none when nothing changed). */
+export type Paid = { label: string; undo: PayUndo | null }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 /** Android: what reminders need (desktop: none of this). */
 export type ReminderStatus = { notifications: boolean; exactAlarms: boolean; batteryUnrestricted: boolean }
@@ -261,6 +267,8 @@ export const api = {
     invoke<number | null>('monthly_in_main', { amountMinor, currency, everyN, unit }),
   snoozePicks: () => invoke<SnoozePick[]>('snooze_picks'),
   snooze: (id: string, untilMs: number) => invoke<void>('snooze', { id, untilMs }),
+  payNow: (id: string, charge: ChargeRef) => invoke<Paid>('pay_now', { id, charge }),
+  undoPay: (id: string, undo: PayUndo) => invoke<void>('undo_pay', { id, undo }),
   reminderAt: (day: string) => invoke<number>('reminder_at', { day }),
   desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
   setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),

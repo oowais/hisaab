@@ -16,7 +16,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-vue-next'
-import type { Action, Detail, ExtraCharge, HistoryCharge, Period } from '~/composables/api'
+import type { Action, ChargeRef, Detail, ExtraCharge, HistoryCharge, Paid, Period } from '~/composables/api'
 import DetailPane from '~/components/DetailPane.vue'
 import Screen from '~/components/Screen.vue'
 
@@ -87,6 +87,36 @@ watch(
   },
   { immediate: true },
 )
+// Opened from a desktop reminder's Pay now (?pay=<period>&due=<scheduled day>):
+// the Pay sheet for that charge.
+const paying = ref<ChargeRef | null>(null)
+watch(
+  () => [route.query.pay, route.query.due] as const,
+  ([pay, due]) => {
+    if (typeof pay !== 'string' || typeof due !== 'string') return
+    paying.value = { periodId: pay, scheduledDate: due }
+    const { pay: _p, due: _d, ...query } = route.query
+    router.replace({ query })
+  },
+  { immediate: true },
+)
+function paid(p: Paid) {
+  paying.value = null
+  const undo = p.undo
+  toast.show({
+    message: p.label,
+    action: undo
+      ? {
+          label: 'Undo',
+          run: () =>
+            api
+              .undoPay(id.value, undo)
+              .then(changed)
+              .catch((e) => toast.show({ message: friendlyError(e, 'undo it') })),
+        }
+      : undefined,
+  })
+}
 // Opened from a Timeline bar (?period=): that period stands out.
 const focusPeriod = computed(() => (typeof route.query.period === 'string' ? route.query.period : null))
 const editing = ref(false)
@@ -496,6 +526,7 @@ function chargeMenu(e: MouseEvent, c: HistoryCharge) {
       @close="snoozing = false"
       @done="(m) => ((snoozing = false), done(m))"
     />
+    <PaySheet v-if="paying && sub" :sub="sub" :charge="paying" @close="paying = null" @done="paid" />
     <EditSheet v-if="editing && sub" :sub="sub" @close="editing = false" @done="editing = false" />
   </component>
 </template>

@@ -319,6 +319,27 @@ fn snooze(app: AppHandle, id: String, until_ms: i64) -> Res<()> {
     write(&app, |s| s.snooze_reminder(&id, until_ms, now_ms(), &local_tz()).map(drop))
 }
 
+/// A reminder's "Pay now" (a desktop notification, the Pay sheet): that
+/// charge paid today.
+pub(crate) fn pay_charge(app: &AppHandle, id: &str, charge: &ChargeRef) -> Res<Paid> {
+    write(app, |s| s.pay_now(id, charge, now_ms(), &local_tz()))
+}
+
+/// Undo "Pay now": the charge back on its schedule.
+pub(crate) fn undo_charge(app: &AppHandle, id: &str, undo: &PayUndo) -> Res<()> {
+    write(app, |s| s.undo_pay(id, undo, now_ms(), &local_tz()).map(drop))
+}
+
+#[tauri::command]
+fn pay_now(app: AppHandle, id: String, charge: ChargeRef) -> Res<Paid> {
+    pay_charge(&app, &id, &charge)
+}
+
+#[tauri::command]
+fn undo_pay(app: AppHandle, id: String, undo: PayUndo) -> Res<()> {
+    undo_charge(&app, &id, &undo)
+}
+
 /// Reminder time of day, "HH:MM", as UTC ms on `day` here (snooze to a day).
 #[tauri::command]
 fn reminder_at(db: State<Db>, day: NaiveDate) -> Res<i64> {
@@ -642,6 +663,8 @@ pub fn run() {
             ensure_rates,
             snooze_picks,
             snooze,
+            pay_now,
+            undo_pay,
             reminder_at,
             desktop_prefs,
             set_autostart,
