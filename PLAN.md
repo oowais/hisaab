@@ -218,7 +218,7 @@ Milestone 1 checklist:
 - [x] Tab bar (Upcoming · Timeline), Settings (theme, version, check for updates, update)
 - [x] Rust workspace: `hisaab-core` (Store, migrations, settings) + tests; Tauri app; Android plugin (updater, back button)
 - [x] App icon (`src-tauri/android/icon/gen.py`) for Android and desktop
-- [x] CI: `release.yml` (APK + .deb/AppImage/PKGBUILD + NSIS + latest.json on push to main), `core.yml`, `web.yml`, Dependabot
+- [x] CI: `release.yml` (APK + .deb/AppImage/PKGBUILD + NSIS + latest.json on a `v0.x.y` tag from `scripts/release.sh`; main pushes build the APK only), `core.yml`, `web.yml`, Dependabot
 - [x] Linux install/update script (`scripts/install-arch.sh`)
 - [x] Set repo secrets, first push, install the APK from the release, confirm an in-app update on Android (0.1.0 → 0.1.1, Nov 1, 2026)
 - [ ] Confirm the in-app update on Windows and `scripts/install-arch.sh` on Linux

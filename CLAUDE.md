@@ -40,13 +40,13 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · Vite+ 
 
 ## Releases and signing
 
-- `release.yml`: every push to `main` that changes the app builds the APK, Linux `.deb` + `hisaab-x86_64.AppImage` (`packaging/linux/build-appimage.sh`, fixed name for AppImage managers like the CachyOS Package Installer; system WebKitGTK, not Tauri's bundled AppImage) + Arch `PKGBUILD` and Windows NSIS installer + `latest.json`, and attaches them to release `v0.x.y`. Android builds only run in CI.
+- Releases are deliberate: `scripts/release.sh` (run by the user, after pushing `main`) picks the next `v0.x.y`, shows the notes and pushes the tag. `release.yml` on the tag builds the APK, Linux `.deb` + `hisaab-x86_64.AppImage` (`packaging/linux/build-appimage.sh`, fixed name for AppImage managers like the CachyOS Package Installer; system WebKitGTK, not Tauri's bundled AppImage) + Arch `PKGBUILD` and Windows NSIS installer + `latest.json`, and one job creates release `v0.x.y` with all of them. A push to `main` that touches Android code only builds the APK (Kotlin check, fills the Gradle cache tags read). Android builds only run in CI. Don't push workflow changes while a release build runs: GitHub refuses `GITHUB_TOKEN` release writes on a commit whose workflows differ from `main` (Nov 25, 2026).
 - Android signing key: `~/.tauri/hisaab-sideload.p12` (+ `.pass`), CI secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` (`src-tauri/android/README.md`). Windows updater key: `~/.tauri/hisaab-updater.key` (no password), secret `TAURI_SIGNING_PRIVATE_KEY`; public key in `src-tauri/tauri.conf.json`. Never generate new keys: installed apps would reject updates.
 - Linux install/update: `scripts/install-arch.sh` (also usable as a Vicinae script).
-- Dependabot opens monthly PRs; Tauri crate and `@tauri-apps/*` must be merged together.
+- Dependabot opens monthly PRs; Tauri crate and `@tauri-apps/*` must be merged together. Merging doesn't release; the next tag does.
 
 ## Git
 
-- Default branch `main`. **Commit straight to local `main`** after checks pass; no branches or PRs. **Never push** — the user pushes (a push releases).
-- **Conventional Commits** drive the version (`.github/scripts/next-version.sh`, always `0.x.y`): `feat` or breaking → minor, else patch; only user-facing types release. `feat:`/`fix:` subjects are shown to users (release notes, in-app What's new): write them as short user-facing sentences. Don't tag by hand or edit `version` in `tauri.conf.json`.
+- Default branch `main`. **Commit straight to local `main`** after checks pass; no branches or PRs. **Never push or tag** — the user pushes and releases with `scripts/release.sh`.
+- **Conventional Commits** drive the version (`.github/scripts/next-version.sh`, always `0.x.y`): `feat` or breaking → minor, else patch; only user-facing types release. `feat:`/`fix:` subjects are shown to users (release notes, in-app What's new): write them as short user-facing sentences. Tags come from `scripts/release.sh`; don't edit `version` in `tauri.conf.json` (CI sets it from the tag).
 - Don't commit build outputs (`target/`, `.output/`, `node_modules/`, APKs) or keys.
